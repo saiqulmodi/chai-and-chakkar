@@ -204,6 +204,28 @@
       pointer-events: none;
       transition: transform 0.08s linear;
     }
+    #chakkarHudPill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(180, 83, 9, 0.28);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    #chakkarHudPill.urgent {
+      background: rgba(245, 158, 11, 0.38);
+      border-color: #fbbf24;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
+      transform: scale(1.05);
+    }
   </style>
   <meta name="description" content="Drop and merge 14 Indian treats inside a tilting brass dabba! Instant mobile and desktop play, daily seeds, and live 2-player duels." />
   <meta property="og:type" content="website" />
@@ -231,7 +253,7 @@
       <div class="pill" id="chakkarPill">🔔 12</div>
       <div class="pill" id="nextPill">Next: <canvas id="nextMini" width="20" height="20"></canvas></div>
     </div>
-    <span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
+    <span id="chakkarHudPill" title="Drops until next Chakkar tilt">🔔 12</span><span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
   </div>
   <div id="lvBarWrap"><div id="lvBar"></div></div>
 
@@ -844,6 +866,13 @@
   }
 
   function step(dt) {
+    const chakkarPillEl = document.getElementById("chakkarHudPill");
+    if (chakkarPillEl) {
+      const remDrops = Math.max(1, Math.min(12, (typeof dropsUntilChakkar === "number" ? dropsUntilChakkar : 12)));
+      const newLabel = `🔔 ${remDrops}`;
+      if (chakkarPillEl.textContent !== newLabel) chakkarPillEl.textContent = newLabel;
+      chakkarPillEl.classList.toggle("urgent", !gameOver && remDrops === 1);
+    }
     const comboPillEl = document.getElementById("comboPill");
     if (comboPillEl) {
       const elapsed = performance.now() - lastMergeAt;
@@ -1569,6 +1598,7 @@
 </script>
 </body>
 </html>
+
 
 
 
