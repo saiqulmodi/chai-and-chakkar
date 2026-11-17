@@ -619,7 +619,12 @@
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
-  let bodies = [], particles = [], popups = [], confetti = []; let chainCount = 0, lastMergeAt = 0; let peerScore = 0, peerLevel = 1, peerConnected = false;
+  let bodies = [], particles = [], popups = [], confetti = []; let chainCount = 0, lastMergeAt = 0, shakeTime = 0, shakeMax = 0, shakeMag = 0;
+  function triggerShake(mag = 6, dur = 0.28) {
+    shakeMag = Math.max(shakeMag, mag);
+    shakeTime = Math.max(shakeTime, dur);
+    shakeMax = Math.max(shakeMax, dur);
+  } let peerScore = 0, peerLevel = 1, peerConnected = false;
 
   // Mobile Screen Wake-Lock (keeps phone screen awake while playing)
   let wakeLock = null;
@@ -673,7 +678,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -859,6 +864,7 @@
       const curR = getActiveTiers()[currentTier].r;
       aimX = Math.min(WALL_R - curR - 2, Math.max(WALL_L + curR + 2, aimX));
     }
+    if (shakeTime > 0) { shakeTime = Math.max(0, shakeTime - dt); if (shakeTime === 0) { shakeMag = 0; shakeMax = 0; } }
     if (dropCooldown > 0) dropCooldown -= dt;
     if (tiltTimer > 0) {
       tiltTimer -= dt;
@@ -899,7 +905,7 @@
               a.merged = b.merged = true;
               const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
               if (a.tier === 13) {
-                score += 50000; spawnPopup(mx, my, "+50,000!", "#fbbf24", true); spawnConfetti();
+                score += 50000; spawnPopup(mx, my, "+50,000!", "#fbbf24", true); spawnConfetti(); triggerShake(9, 0.45);
                 spawnParticles(mx, my, "#fbbf24", 32);
                 tone(980, 0.3, "triangle", 0.18);
                 showToast("👑 GRAND FEAST +50,000!"); buzz([60, 40, 80]);
@@ -917,7 +923,7 @@
           if (chainCount >= 2) {
             spawnPopup(mx, my - 24, `🔥 x${chainCount} COMBO! (+${bonusPts.toLocaleString()})`, "#ec4899", true);
             tone(480 + Math.min(chainCount, 8) * 75, 0.11, "triangle", 0.13);
-            buzz([18, 20, 28]);
+            buzz([18, 20, 28]); if (chainCount >= 4) triggerShake(Math.min(8, 3 + chainCount * 0.6), 0.26);
           }
                 bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
@@ -1064,6 +1070,11 @@
   }
 
   function draw() {
+    ctx.save();
+    if (shakeTime > 0 && shakeMax > 0) {
+      const decay = shakeTime / shakeMax;
+      ctx.translate((Math.random() * 2 - 1) * shakeMag * decay, (Math.random() * 2 - 1) * shakeMag * decay);
+    }
     const tiers = getActiveTiers();
     ctx.clearRect(0, 0, W, H);
 
@@ -1517,6 +1528,7 @@
 </script>
 </body>
 </html>
+
 
 
 
