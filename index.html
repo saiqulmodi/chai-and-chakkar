@@ -572,7 +572,7 @@
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
-  let bodies = [], particles = [], popups = [], confetti = [];
+  let bodies = [], particles = [], popups = [], confetti = []; let peerScore = 0, peerConnected = false;
 
   // Mobile Screen Wake-Lock (keeps phone screen awake while playing)
   let wakeLock = null;
@@ -644,7 +644,9 @@
     currentTier = pickSpawnTier();
     nextTier = pickSpawnTier();
     unlockTier(currentTier);
-    document.getElementById("gameOverOverlay").style.display = "none";
+    const ov = document.getElementById("gameOverOverlay");
+    ov.firstElementChild.textContent = "Dabba Full!";
+    ov.style.display = "none";
     updateHUD();
   }
 
@@ -883,9 +885,21 @@
       if (overflowTimer >= 3.0 && !gameOver) {
         gameOver = true;
         saveScoreRecord();
-        document.getElementById("finalStats").textContent =
-          `Level ${level} • ${score.toLocaleString()} pts • ${getHighestLabel()}`;
-        document.getElementById("gameOverOverlay").style.display = "flex";
+        const ov = document.getElementById("gameOverOverlay");
+        if (peerConnected) {
+          broadcast2P({ type: "gameover", score, level });
+          const won = score > peerScore;
+          const tie = score === peerScore;
+          ov.firstElementChild.textContent = tie ? "🤝 2P Match Tied!" : (won ? "🏆 You Win! (Outscored Rival)" : "⚔️ Rival Wins! (Dabba Full)");
+          document.getElementById("finalStats").textContent =
+            `You: ${score.toLocaleString()} pts  vs  2P: ${peerScore.toLocaleString()} pts`;
+          if (won) { spawnConfetti(); playLevelFanfare(); }
+        } else {
+          ov.firstElementChild.textContent = "Dabba Full!";
+          document.getElementById("finalStats").textContent =
+            `Level ${level} • ${score.toLocaleString()} pts • ${getHighestLabel()}`;
+        }
+        ov.style.display = "flex";
       }
     } else {
       overflowTimer = Math.max(0, overflowTimer - dt * 1.5);
@@ -1116,13 +1130,32 @@
 
   function handlePeerMsg(data) {
     if (!data) return;
+    peerConnected = true;
     const badge = document.getElementById("peerBadge");
     badge.style.display = "block";
-    if (typeof data.score === "number") badge.textContent = `2P: ${data.score.toLocaleString()}`;
+    if (typeof data.score === "number") {
+      peerScore = data.score;
+      badge.textContent = `2P: ${peerScore.toLocaleString()}`;
+    }
     if (data.type === "chakkar") {
       tiltAngle = (Math.random() < 0.5 ? -1 : 1) * 0.16;
       tiltTimer = 1.6;
       showToast("⚔️ Rival Sent Chakkar Tilt!");
+    } else if (data.type === "gameover" && !gameOver) {
+      gameOver = true;
+      saveScoreRecord();
+      const won = score >= peerScore;
+      const ov = document.getElementById("gameOverOverlay");
+      ov.firstElementChild.textContent = won ? "🏆 You Win! (Rival Dabba Full)" : "⚔️ Rival Wins on Points!";
+      document.getElementById("finalStats").textContent =
+        `You: ${score.toLocaleString()} pts  vs  2P: ${peerScore.toLocaleString()} pts`;
+      ov.style.display = "flex";
+      if (won) { spawnConfetti(); playLevelFanfare(); }
+    } else if (data.type === "rematch") {
+      peerScore = 0;
+      badge.textContent = "2P: 0";
+      resetGame(1);
+      showToast("🔄 2P Rematch Started!");
     }
   }
 
@@ -1181,7 +1214,14 @@
     const lv = parseInt(document.getElementById("startLvSelect").value || "1", 10);
     resetGame(lv); backdrop.style.display = "none";
   };
-  document.getElementById("restartBtn").onclick = () => resetGame(1);
+  document.getElementById("restartBtn").onclick = () => {
+    if (peerConnected) {
+      peerScore = 0;
+      document.getElementById("peerBadge").textContent = "2P: 0";
+      broadcast2P({ type: "rematch", score: 0 });
+    }
+    resetGame(1);
+  };
   document.getElementById("overShareBtn").onclick = downloadScoreCard;
   document.getElementById("downloadCardBtn").onclick = downloadScoreCard;
 
@@ -1331,6 +1371,7 @@
 </script>
 </body>
 </html>
+
 
 
 
