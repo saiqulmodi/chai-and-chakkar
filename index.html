@@ -790,6 +790,13 @@
   }
 
   function step(dt) {
+    if (!gameOver && (keysDown.left || keysDown.right)) {
+      const aimSpeed = 320;
+      if (keysDown.left) aimX -= aimSpeed * dt;
+      if (keysDown.right) aimX += aimSpeed * dt;
+      const curR = getActiveTiers()[currentTier].r;
+      aimX = Math.min(WALL_R - curR - 2, Math.max(WALL_L + curR + 2, aimX));
+    }
     if (dropCooldown > 0) dropCooldown -= dt;
     if (tiltTimer > 0) {
       tiltTimer -= dt;
@@ -1047,6 +1054,30 @@
   canvas.addEventListener("touchmove", e => { e.preventDefault(); aimX = pointerX(e); }, { passive: false });
   canvas.addEventListener("touchend", e => { e.preventDefault(); dropSnack(); }, { passive: false });
 
+  // Desktop Keyboard Controls (Left/Right Arrows or A/D to aim, Space/Down/S/Enter to drop)
+  const keysDown = { left: false, right: false };
+  window.addEventListener("keydown", e => {
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if (document.getElementById("modalBackdrop").style.display === "flex") return;
+
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+      e.preventDefault();
+      keysDown.left = true;
+    } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+      e.preventDefault();
+      keysDown.right = true;
+    } else if (e.key === " " || e.key === "ArrowDown" || e.key === "s" || e.key === "S" || e.key === "Enter") {
+      e.preventDefault();
+      if (!e.repeat) dropSnack();
+    }
+  });
+  window.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keysDown.left = false;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keysDown.right = false;
+  });
+  window.addEventListener("blur", () => { keysDown.left = false; keysDown.right = false; });
+
   // 2P Sync (Defaulting to Tailscale Funnel endpoint)
   const DEFAULT_WS = "wss://modi.tail3f4d21.ts.net/ws";
   const urlParams = new URLSearchParams(location.search);
@@ -1300,6 +1331,7 @@
 </script>
 </body>
 </html>
+
 
 
 
