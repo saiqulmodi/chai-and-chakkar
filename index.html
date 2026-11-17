@@ -191,6 +191,20 @@
       animation: peerPulse 1.5s infinite ease-in-out;
     }
   </style>
+  <meta name="description" content="Drop and merge 14 Indian treats inside a tilting brass dabba! Instant mobile and desktop play, daily seeds, and live 2-player duels." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Chai & Chakkar" />
+  <meta property="og:title" content="Chai & Chakkar — 14-Tier Indian Snack Physics Merge Game" />
+  <meta property="og:description" content="Drop, merge, and survive the Chakkar gravity tilt! Play solo or challenge a friend live with a 4-letter 2P room link." />
+  <meta property="og:url" content="https://saiqulmodi.github.io/chai-and-chakkar/" />
+  <meta property="og:image" content="https://saiqulmodi.github.io/chai-and-chakkar/og-preview.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Chai & Chakkar — 14-Tier Indian Snack Physics Merge Game" />
+  <meta name="twitter:description" content="Drop, merge, and survive the Chakkar gravity tilt! Play solo or challenge a friend live with a 4-letter 2P room link." />
+  <meta name="twitter:image" content="https://saiqulmodi.github.io/chai-and-chakkar/og-preview.png" />
 </head>
 <body>
   <div id="topbar">
@@ -213,7 +227,7 @@
       <div style="font-size:1.35rem;font-weight:900;">Dabba Full!</div>
       <div id="finalStats" style="font-size:0.9rem;opacity:0.92;"></div>
       <div style="display:flex;gap:8px;margin-top:6px;">
-        <button class="btn" id="restartBtn">↻ Play Again</button>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;"><button class="btn" id="restartBtn">↻ Play Again</button><button class="btn sec" id="shareChallengeBtn">⚔️ Share Challenge</button></div>
         <button class="btn sec" id="overShareBtn">📸 Share Card</button>
       </div>
     </div>
@@ -1237,6 +1251,23 @@
     const lv = parseInt(document.getElementById("startLvSelect").value || "1", 10);
     resetGame(lv); backdrop.style.display = "none";
   };
+    document.getElementById("shareChallengeBtn").onclick = () => {
+    if (!roomCode) {
+      roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const rcInput = document.getElementById("roomCodeInput");
+      if (rcInput) rcInput.value = roomCode;
+      connectRoom();
+    }
+    const u = new URL(window.location.href);
+    u.searchParams.set("room", roomCode);
+    const challengeText = `☕ I scored ${score.toLocaleString()} pts (Level ${level} • ${getHighestLabel()}) in Chai & Chakkar! Join Room ${roomCode} to beat me:`;
+    if (navigator.share) {
+      navigator.share({ title: "Chai & Chakkar 2P Challenge", text: challengeText, url: u.toString() }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(`${challengeText} ${u.toString()}`);
+      showToast(`📋 Challenge & Room ${roomCode} Copied!`);
+    }
+  };
   document.getElementById("restartBtn").onclick = () => {
     if (peerConnected) {
       peerScore = 0; peerLevel = 1; renderPeerBadge();
@@ -1393,6 +1424,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
