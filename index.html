@@ -173,7 +173,24 @@
     align-items: center; justify-content: center; color: #fff;
     gap: 10px; padding: 18px; text-align: center; z-index: 10;
   }
-</style>
+    @keyframes peerPulse {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75); }
+      50% { transform: scale(1.25); opacity: 0.9; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+    }
+    #peerBadge.live {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 6px;
+    }
+    #peerBadge .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      animation: peerPulse 1.5s infinite ease-in-out;
+    }
+  </style>
 </head>
 <body>
   <div id="topbar">
@@ -572,7 +589,7 @@
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
-  let bodies = [], particles = [], popups = [], confetti = []; let peerScore = 0, peerConnected = false;
+  let bodies = [], particles = [], popups = [], confetti = []; let peerScore = 0, peerLevel = 1, peerConnected = false;
 
   // Mobile Screen Wake-Lock (keeps phone screen awake while playing)
   let wakeLock = null;
@@ -854,7 +871,7 @@
               }
               checkProgression();
               updateHUD();
-              broadcast2P({ type: "score", score });
+              broadcast2P({ type: "score", score, level });
             } else {
               const overlap = (minDist - dist) * 0.5;
               const nx = dx / dist, ny = dy / dist;
@@ -1113,7 +1130,7 @@
         ws = new WebSocket(`${clean}/${roomCode}`);
         ws.onopen = () => {
           document.getElementById("roomStatus").textContent = `Live WS Connected • Room ${roomCode}`;
-          broadcast2P({ type: "score", score });
+          broadcast2P({ type: "score", score, level });
         };
         ws.onerror = () => {
           document.getElementById("roomStatus").textContent = `Local Sync Active (Start server.py for WS)`;
@@ -1128,15 +1145,22 @@
     if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(payload)); } catch {} }
   }
 
+  function renderPeerBadge() {
+    const badge = document.getElementById("peerBadge");
+    badge.classList.add("live");
+    badge.innerHTML = `<span class="live-dot"></span><span>2P Lv ${peerLevel} • ${peerScore.toLocaleString()}</span>`;
+  }
+
   function handlePeerMsg(data) {
     if (!data) return;
     peerConnected = true;
-    const badge = document.getElementById("peerBadge");
-    badge.style.display = "block";
+    if (typeof data.level === "number" && data.level >= 1) {
+      peerLevel = data.level;
+    }
     if (typeof data.score === "number") {
       peerScore = data.score;
-      badge.textContent = `2P: ${peerScore.toLocaleString()}`;
     }
+    renderPeerBadge();
     if (data.type === "chakkar") {
       tiltAngle = (Math.random() < 0.5 ? -1 : 1) * 0.16;
       tiltTimer = 1.6;
@@ -1152,8 +1176,7 @@
       ov.style.display = "flex";
       if (won) { spawnConfetti(); playLevelFanfare(); }
     } else if (data.type === "rematch") {
-      peerScore = 0;
-      badge.textContent = "2P: 0";
+      peerScore = 0; peerLevel = 1; renderPeerBadge();
       resetGame(1);
       showToast("🔄 2P Rematch Started!");
     }
@@ -1216,8 +1239,7 @@
   };
   document.getElementById("restartBtn").onclick = () => {
     if (peerConnected) {
-      peerScore = 0;
-      document.getElementById("peerBadge").textContent = "2P: 0";
+      peerScore = 0; peerLevel = 1; renderPeerBadge();
       broadcast2P({ type: "rematch", score: 0 });
     }
     resetGame(1);
@@ -1371,6 +1393,7 @@
 </script>
 </body>
 </html>
+
 
 
 
