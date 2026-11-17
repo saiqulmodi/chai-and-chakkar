@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "chai-chakkar-v4";
+﻿const CACHE_NAME = "chai-chakkar-v5";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", event => {
@@ -30,3 +30,4 @@ self.addEventListener("fetch", event => {
     })
   );
 });
+
