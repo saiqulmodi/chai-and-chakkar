@@ -1011,7 +1011,47 @@
     return tiers[maxT].label;
   }
 
-    function getTopScores() {
+      function localDayKey(offsetDays = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function renderDailyStreak(count) {
+    const badge = document.getElementById("dailyStreakBadge");
+    if (!badge) return;
+    const n = Math.max(1, Number(count) || 1);
+    badge.textContent = `🔥 ${n} Day${n === 1 ? "" : "s"} Streak`;
+  }
+
+  function updateDailyStreak() {
+    const today = localDayKey(0);
+    const yesterday = localDayKey(-1);
+    let data = { lastDate: "", count: 0 };
+    try {
+      const raw = localStorage.getItem("chai_chakkar_streak");
+      if (raw) data = JSON.parse(raw) || data;
+    } catch {}
+
+    if (data.lastDate === today) {
+      data.count = Math.max(1, Number(data.count) || 1);
+    } else if (data.lastDate === yesterday) {
+      data.count = (Number(data.count) || 0) + 1;
+      data.lastDate = today;
+    } else {
+      data.count = 1;
+      data.lastDate = today;
+    }
+
+    try { localStorage.setItem("chai_chakkar_streak", JSON.stringify(data)); } catch {}
+    renderDailyStreak(data.count);
+    return data.count;
+  }
+
+  function getTopScores() {
     try {
       const raw = localStorage.getItem("chai_chakkar_top5");
       const arr = raw ? JSON.parse(raw) : [];
@@ -1056,6 +1096,7 @@
   });
 
   function saveScoreRecord() {
+    updateDailyStreak();
     recordTopScore(score, level, getHighestLabel());
     leaderboard.push({
       mode: isDaily ? "Daily" : "Endless",
@@ -1528,6 +1569,7 @@
 </script>
 </body>
 </html>
+
 
 
 
