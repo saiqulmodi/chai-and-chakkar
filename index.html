@@ -226,6 +226,14 @@
       box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
       transform: scale(1.05);
     }
+    @keyframes nextPopIn {
+      0% { transform: scale(0.55); opacity: 0.45; }
+      65% { transform: scale(1.18); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .next-pop {
+      animation: nextPopIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
   </style>
   <meta name="description" content="Drop and merge 14 Indian treats inside a tilting brass dabba! Instant mobile and desktop play, daily seeds, and live 2-player duels." />
   <meta property="og:type" content="website" />
@@ -663,7 +671,7 @@
   window.addEventListener("pointerdown", () => { if (!wakeLock) requestWakeLock(); }, { once: true });
   let score = 0, level = 1, dropsUntilChakkar = 12;
   let tiltAngle = 0, tiltTimer = 0;
-  let aimX = W / 2, currentTier = 0, nextTier = 1;
+  let aimX = W / 2, currentTier = 0, nextTier = 1; pulseNextPreview();
   let dropCooldown = 0, overflowTimer = 0, gameOver = false;
   let isDaily = false, rngState = Date.now() % 2147483647;
   let hintEnabled = false, hintCharges = 0, nextHintThreshold = 500;
@@ -716,7 +724,7 @@
       rngState = (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()) % 2147483647;
     }
     currentTier = pickSpawnTier();
-    nextTier = pickSpawnTier();
+    nextTier = pickSpawnTier(); pulseNextPreview();
     unlockTier(currentTier);
     const ov = document.getElementById("gameOverOverlay");
     ov.firstElementChild.textContent = "Dabba Full!";
@@ -803,6 +811,17 @@
     }
   }
 
+    function pulseNextPreview() {
+    const el = document.getElementById("nextCanvas")
+      || document.getElementById("nextBadge")
+      || document.getElementById("nextPreview")
+      || document.getElementById("nextItem");
+    if (!el) return;
+    el.classList.remove("next-pop");
+    void el.offsetWidth;
+    el.classList.add("next-pop");
+  }
+
   function dropSnack() {
     if (gameOver || dropCooldown > 0) return;
     const tiers = getActiveTiers();
@@ -830,7 +849,7 @@
     }
 
     currentTier = nextTier;
-    nextTier = pickSpawnTier();
+    nextTier = pickSpawnTier(); pulseNextPreview();
     updateHUD();
   }
 
@@ -1598,6 +1617,7 @@
 </script>
 </body>
 </html>
+
 
 
 
