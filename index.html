@@ -673,7 +673,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -1517,6 +1517,7 @@
 </script>
 </body>
 </html>
+
 
 
 
