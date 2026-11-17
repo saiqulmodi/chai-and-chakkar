@@ -1,0 +1,18 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#fffbeb" stroke-width="14" stroke-dasharray="28 16"/>
+  <!-- Kulhad Chai Cup -->
+  <path d="M168 190 L344 190 L322 365 Q318 390 256 390 Q194 390 190 365 Z" fill="#b45309" stroke="#451a03" stroke-width="10"/>
+  <ellipse cx="256" cy="190" rx="88" ry="22" fill="#f59e0b" stroke="#451a03" stroke-width="8"/>
+  <ellipse cx="256" cy="192" rx="74" ry="15" fill="#d97706"/>
+  <!-- Steam wisps -->
+  <path d="M215 145 Q200 120 220 95" fill="none" stroke="#fffbeb" stroke-width="12" stroke-linecap="round"/>
+  <path d="M256 135 Q240 105 262 78" fill="none" stroke="#fffbeb" stroke-width="12" stroke-linecap="round"/>
+  <path d="M297 145 Q282 120 302 95" fill="none" stroke="#fffbeb" stroke-width="12" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,17 @@
+﻿{
+  "name": "Chai & Chakkar",
+  "short_name": "ChaiChakkar",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fdf6e9",
+  "theme_color": "#d97706",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

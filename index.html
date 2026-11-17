@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#d97706" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
 <title>Chai &amp; Chakkar</title>
 <style>
   :root {
@@ -14,8 +17,6 @@
     --accent: #d97706;
     --accent2: #b45309;
     --border: #d6b88d;
-    --dabba: #e7c896;
-    --dabba-dark: #b6894b;
   }
   body.night {
     --bg: #181310;
@@ -26,8 +27,6 @@
     --accent: #f59e0b;
     --accent2: #d97706;
     --border: #5c4330;
-    --dabba: #3a2b20;
-    --dabba-dark: #8c6239;
   }
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
   html, body {
@@ -44,14 +43,14 @@
     padding: 6px 4px; gap: 6px;
   }
   #title {
-    font-weight: 800; font-size: 1.08rem; letter-spacing: 0.3px;
+    font-weight: 800; font-size: 1.06rem; letter-spacing: 0.3px;
     color: var(--accent2); white-space: nowrap;
   }
   .pills { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; }
   .pill {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 10px; padding: 3px 7px; font-size: 0.72rem;
-    font-weight: 700; display: flex; align-items: center; gap: 3px;
+    font-weight: 700; display: flex; align-items: center; gap: 4px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
   #menuBtn {
@@ -77,7 +76,7 @@
     height: min(600px, 82vh);
     display: flex; align-items: center; justify-content: center;
   }
-  canvas {
+  canvas#game {
     width: 100%; height: 100%;
     border-radius: 18px;
     box-shadow: 0 10px 28px rgba(0,0,0,0.18);
@@ -97,7 +96,6 @@
     padding: 3px 8px; border-radius: 8px; font-size: 0.7rem;
     font-weight: 800; display: none; z-index: 4;
   }
-  /* Menu Drawer */
   #modalBackdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,0.52);
     display: none; align-items: center; justify-content: center;
@@ -147,8 +145,8 @@
   }
   .shelfCell {
     aspect-ratio: 1; border-radius: 8px; background: var(--card);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 1.05rem; border: 1px solid var(--border); position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); position: relative;
   }
   .shelfCell.locked { opacity: 0.35; filter: grayscale(1); }
   .shelfCell .crown { position: absolute; top: -4px; right: -2px; font-size: 0.62rem; }
@@ -159,7 +157,8 @@
   }
   .poolChip {
     padding: 4px 7px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--card); font-size: 0.78rem; cursor: pointer;
+    background: var(--card); font-size: 0.76rem; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
   }
   .poolChip.picked { background: var(--accent); color: #fff; border-color: var(--accent2); }
   input[type="text"], select {
@@ -179,12 +178,12 @@
 </head>
 <body>
   <div id="topbar">
-    <div id="title">☕ Chai &amp; Chakkar</div>
+    <div id="title">Chai &amp; Chakkar</div>
     <div class="pills">
       <div class="pill" id="lvPill">⭐ Lv 1</div>
       <div class="pill" id="scorePill">0</div>
       <div class="pill" id="chakkarPill">🔔 12</div>
-      <div class="pill" id="nextPill">Next: 🌿</div>
+      <div class="pill" id="nextPill">Next: <canvas id="nextMini" width="20" height="20"></canvas></div>
     </div>
     <button id="menuBtn">☰ Menu</button>
   </div>
@@ -217,7 +216,6 @@
         <button class="tab" data-tab="tabRanks">Ranks</button>
       </div>
 
-      <!-- TAB 1: PLAY & LEVEL -->
       <div class="tabBody" id="tabPlay">
         <div class="row">
           <span>Mode</span>
@@ -241,12 +239,15 @@
             <button class="btn sec" id="themeBtn">☀️ Day</button>
           </div>
         </div>
+        <div class="row" id="pwaRow" style="display:none;">
+          <span>Offline App</span>
+          <button class="btn sec" id="installPwaBtn">📲 Install App</button>
+        </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn" id="newGameBtn" style="width:100%;">↻ Start Fresh Run</button>
         </div>
       </div>
 
-      <!-- TAB 2: 14 ITEMS, COLLECTION ALBUM & CUSTOM BUILDER -->
       <div class="tabBody hidden" id="tabItems">
         <div class="packGrid" id="packGrid"></div>
         <div style="font-weight:800;font-size:0.78rem;margin-top:4px;">🏆 Sticker Collection Shelf</div>
@@ -265,7 +266,6 @@
         </div>
       </div>
 
-      <!-- TAB 3: 2P ROOM & SHAREABLE CARD -->
       <div class="tabBody hidden" id="tab2P">
         <div style="font-weight:800;margin-bottom:6px;">⚔️ 2-Player Room Link</div>
         <div class="row">
@@ -273,7 +273,7 @@
           <button class="btn" id="copyRoomBtn" style="flex:1;">🔗 Copy 2P Link</button>
         </div>
         <div style="margin-bottom:10px;">
-          <input type="text" id="wsUrlInput" placeholder="Optional WebSocket URL (e.g. wss://.../ws)" />
+          <input type="text" id="wsUrlInput" placeholder="WebSocket URL (e.g. wss://modi.tail3f4d21.ts.net/ws)" />
         </div>
         <div id="roomStatus" style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">
           Same-browser sync active. Add WebSocket URL for cross-device play.
@@ -285,7 +285,6 @@
         </div>
       </div>
 
-      <!-- TAB 4: RANKS -->
       <div class="tabBody hidden" id="tabRanks">
         <table>
           <thead><tr><th>#</th><th>Mode</th><th>Level</th><th>Score</th><th>Top Treat</th></tr></thead>
@@ -297,90 +296,208 @@
 
 <script>
 (() => {
+  // Register Offline Service Worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById("pwaRow").style.display = "flex";
+  });
+  document.getElementById("installPwaBtn").onclick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById("pwaRow").style.display = "none";
+  };
+
+  // Custom Vector Art Renderer for All Treats
+  function drawVectorArt(c, art, r) {
+    c.save();
+    switch (art) {
+      case "elaichi":
+        c.rotate(-0.45);
+        c.fillStyle = "#65a30d"; c.beginPath(); c.ellipse(0, 0, r * 0.68, r * 0.42, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#ecfccb"; c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(-r * 0.5, 0); c.lineTo(r * 0.5, 0); c.stroke();
+        break;
+      case "rasgulla":
+        c.fillStyle = "#fffbeb"; c.beginPath(); c.arc(0, 0, r * 0.66, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "rgba(255,255,255,0.8)"; c.beginPath(); c.arc(-r * 0.22, -r * 0.22, r * 0.18, 0, Math.PI * 2); c.fill();
+        break;
+      case "kulfi":
+        c.fillStyle = "#fde68a"; c.fillRect(-r * 0.08, r * 0.25, r * 0.16, r * 0.45);
+        c.fillStyle = "#fef3c7"; c.beginPath(); c.moveTo(-r * 0.36, r * 0.28); c.lineTo(r * 0.36, r * 0.28); c.lineTo(r * 0.2, -r * 0.55); c.lineTo(-r * 0.2, -r * 0.55); c.closePath(); c.fill();
+        c.fillStyle = "#16a34a"; c.fillRect(-r * 0.15, -r * 0.3, r * 0.1, r * 0.1); c.fillRect(r * 0.06, -r * 0.1, r * 0.1, r * 0.1);
+        break;
+      case "panipuri":
+        c.fillStyle = "#f59e0b"; c.beginPath(); c.arc(0, r * 0.08, r * 0.62, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#15803d"; c.beginPath(); c.ellipse(0, -r * 0.05, r * 0.42, r * 0.24, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#fef08a"; c.beginPath(); c.arc(-r * 0.12, -r * 0.05, r * 0.1, 0, Math.PI * 2); c.fill();
+        break;
+      case "samosa":
+        c.fillStyle = "#f59e0b"; c.strokeStyle = "#78350f"; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(0, -r * 0.62); c.lineTo(r * 0.62, r * 0.46); c.lineTo(-r * 0.62, r * 0.46); c.closePath();
+        c.fill(); c.stroke();
+        c.fillStyle = "#b45309"; c.beginPath(); c.arc(-r * 0.1, r * 0.15, r * 0.07, 0, Math.PI * 2); c.arc(r * 0.16, r * 0.22, r * 0.06, 0, Math.PI * 2); c.fill();
+        break;
+      case "coffee":
+        c.fillStyle = "#fef3c7"; c.beginPath(); c.moveTo(-r * 0.4, -r * 0.35); c.lineTo(r * 0.4, -r * 0.35); c.lineTo(r * 0.3, r * 0.58); c.lineTo(-r * 0.3, r * 0.58); c.closePath(); c.fill();
+        c.fillStyle = "#78350f"; c.beginPath(); c.moveTo(-r * 0.36, -r * 0.1); c.lineTo(r * 0.36, -r * 0.1); c.lineTo(r * 0.29, r * 0.55); c.lineTo(-r * 0.29, r * 0.55); c.closePath(); c.fill();
+        c.strokeStyle = "#dc2626"; c.lineWidth = 3; c.beginPath(); c.moveTo(r * 0.05, -r * 0.1); c.lineTo(r * 0.25, -r * 0.65); c.stroke();
+        break;
+      case "lassi":
+        c.fillStyle = "#fde047"; c.beginPath(); c.moveTo(-r * 0.42, -r * 0.32); c.lineTo(r * 0.42, -r * 0.32); c.lineTo(r * 0.32, r * 0.58); c.lineTo(-r * 0.32, r * 0.58); c.closePath(); c.fill();
+        c.fillStyle = "#fffbeb"; c.beginPath(); c.ellipse(0, -r * 0.32, r * 0.42, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#ef4444"; c.beginPath(); c.arc(0, -r * 0.34, r * 0.1, 0, Math.PI * 2); c.fill();
+        break;
+      case "vadapav":
+        c.fillStyle = "#fcd34d"; c.beginPath(); c.arc(0, -r * 0.1, r * 0.55, Math.PI, 0); c.fill();
+        c.fillStyle = "#ea580c"; c.beginPath(); c.roundRect(-r * 0.56, -r * 0.08, r * 1.12, r * 0.26, 6); c.fill();
+        c.fillStyle = "#16a34a"; c.fillRect(-r * 0.48, -r * 0.14, r * 0.96, r * 0.08);
+        c.fillStyle = "#f59e0b"; c.beginPath(); c.roundRect(-r * 0.52, r * 0.2, r * 1.04, r * 0.24, 5); c.fill();
+        break;
+      case "jalebi":
+        c.strokeStyle = "#fb923c"; c.lineWidth = Math.max(3, r * 0.13); c.lineCap = "round";
+        c.beginPath();
+        for (let a = 0; a < Math.PI * 5; a += 0.2) {
+          const rad = (a / (Math.PI * 5)) * r * 0.65;
+          const x = Math.cos(a) * rad, y = Math.sin(a) * rad;
+          if (a === 0) c.moveTo(x, y); else c.lineTo(x, y);
+        }
+        c.stroke();
+        break;
+      case "chai":
+        c.fillStyle = "#b45309"; c.beginPath(); c.moveTo(-r * 0.46, -r * 0.28); c.lineTo(r * 0.46, -r * 0.28); c.lineTo(r * 0.35, r * 0.55); c.lineTo(-r * 0.35, r * 0.55); c.closePath(); c.fill();
+        c.fillStyle = "#f59e0b"; c.beginPath(); c.ellipse(0, -r * 0.28, r * 0.46, r * 0.13, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#fffbeb"; c.lineWidth = 2.2;
+        c.beginPath(); c.moveTo(-r * 0.15, -r * 0.45); c.quadraticCurveTo(-r * 0.25, -r * 0.62, -r * 0.1, -r * 0.75); c.stroke();
+        c.beginPath(); c.moveTo(r * 0.15, -r * 0.45); c.quadraticCurveTo(r * 0.05, -r * 0.62, r * 0.2, -r * 0.75); c.stroke();
+        break;
+      case "sundae":
+        c.fillStyle = "#e0f2fe"; c.beginPath(); c.moveTo(-r * 0.48, r * 0.05); c.lineTo(r * 0.48, r * 0.05); c.lineTo(r * 0.22, r * 0.56); c.lineTo(-r * 0.22, r * 0.56); c.closePath(); c.fill();
+        c.fillStyle = "#f472b6"; c.beginPath(); c.arc(-r * 0.2, -r * 0.05, r * 0.28, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#fef08a"; c.beginPath(); c.arc(r * 0.2, -r * 0.05, r * 0.28, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -r * 0.28, r * 0.28, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#dc2626"; c.beginPath(); c.arc(0, -r * 0.56, r * 0.11, 0, Math.PI * 2); c.fill();
+        break;
+      case "paneer":
+        c.strokeStyle = "#fde68a"; c.lineWidth = 3;
+        c.beginPath(); c.moveTo(-r * 0.6, r * 0.6); c.lineTo(r * 0.6, -r * 0.6); c.stroke();
+        c.fillStyle = "#f97316"; c.fillRect(-r * 0.36, r * 0.06, r * 0.3, r * 0.3);
+        c.fillStyle = "#16a34a"; c.fillRect(-r * 0.12, -r * 0.18, r * 0.26, r * 0.26);
+        c.fillStyle = "#ea580c"; c.fillRect(r * 0.08, -r * 0.38, r * 0.3, r * 0.3);
+        break;
+      case "dosa":
+        c.fillStyle = "#eab308"; c.strokeStyle = "#854d0e"; c.lineWidth = 2.5;
+        c.beginPath(); c.moveTo(-r * 0.65, r * 0.35); c.lineTo(r * 0.65, -r * 0.22); c.lineTo(r * 0.52, r * 0.42); c.closePath();
+        c.fill(); c.stroke();
+        c.fillStyle = "#fffbeb"; c.beginPath(); c.arc(-r * 0.35, -r * 0.25, r * 0.16, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#16a34a"; c.beginPath(); c.arc(0, -r * 0.32, r * 0.16, 0, Math.PI * 2); c.fill();
+        break;
+      case "thali":
+        c.fillStyle = "#fbbf24"; c.beginPath(); c.arc(0, 0, r * 0.76, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "#78350f"; c.lineWidth = 3; c.stroke();
+        const bowls = [[-0.32, -0.25, "#ef4444"], [0, -0.36, "#16a34a"], [0.32, -0.25, "#f97316"], [-0.34, 0.16, "#fffbeb"]];
+        for (const [bx, by, col] of bowls) {
+          c.fillStyle = col; c.beginPath(); c.arc(r * bx, r * by, r * 0.15, 0, Math.PI * 2); c.fill();
+        }
+        c.fillStyle = "#fef3c7"; c.beginPath(); c.arc(r * 0.15, r * 0.24, r * 0.25, 0, Math.PI * 2); c.fill();
+        break;
+      default:
+        c.font = `${Math.floor(r * 1.15)}px sans-serif`;
+        c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillText(art, 0, 1);
+    }
+    c.restore();
+  }
+
   const PACKS = {
     veg: {
       name: "🍛 14 Veg Food & Drinks",
       items: [
-        { icon: "🌿", label: "Elaichi", color: "#4d7c0f", r: 15 },
-        { icon: "🟤", label: "Rasgulla", color: "#92400e", r: 20 },
-        { icon: "🍡", label: "Kulfi Stick", color: "#f59e0b", r: 25 },
-        { icon: "🥟", label: "Pani Puri", color: "#d97706", r: 31 },
-        { icon: "🔺", label: "Samosa", color: "#ea580c", r: 37 },
-        { icon: "🧋", label: "Cold Coffee", color: "#78350f", r: 44 },
-        { icon: "🥭", label: "Mango Lassi", color: "#eab308", r: 51 },
-        { icon: "🍔", label: "Vada Pav", color: "#dc2626", r: 59 },
-        { icon: "🥨", label: "Jalebi Coil", color: "#f97316", r: 67 },
-        { icon: "☕", label: "Masala Chai", color: "#b45309", r: 76 },
-        { icon: "🍨", label: "Ice Sundae", color: "#ec4899", r: 85 },
-        { icon: "🧀", label: "Paneer Tikka", color: "#e11d48", r: 95 },
-        { icon: "🌮", label: "Masala Dosa", color: "#ca8a04", r: 106 },
-        { icon: "👑", label: "Royal Veg Thali", color: "#7c3aed", r: 118 }
+        { art: "elaichi", icon: "🌿", label: "Elaichi", color: "#365314", r: 15 },
+        { art: "rasgulla", icon: "⚪", label: "Rasgulla", color: "#92400e", r: 20 },
+        { art: "kulfi", icon: "🍡", label: "Kulfi Stick", color: "#b45309", r: 25 },
+        { art: "panipuri", icon: "🥟", label: "Pani Puri", color: "#78350f", r: 31 },
+        { art: "samosa", icon: "🔺", label: "Samosa", color: "#9a3412", r: 37 },
+        { art: "coffee", icon: "🧋", label: "Cold Coffee", color: "#451a03", r: 44 },
+        { art: "lassi", icon: "🥭", label: "Mango Lassi", color: "#854d0e", r: 51 },
+        { art: "vadapav", icon: "🍔", label: "Vada Pav", color: "#991b1b", r: 59 },
+        { art: "jalebi", icon: "🥨", label: "Jalebi Coil", color: "#7c2d12", r: 67 },
+        { art: "chai", icon: "☕", label: "Masala Chai", color: "#431407", r: 76 },
+        { art: "sundae", icon: "🍨", label: "Ice Sundae", color: "#831843", r: 85 },
+        { art: "paneer", icon: "🧀", label: "Paneer Tikka", color: "#881337", r: 95 },
+        { art: "dosa", icon: "🌮", label: "Masala Dosa", color: "#713f12", r: 106 },
+        { art: "thali", icon: "👑", label: "Royal Veg Thali", color: "#4c1d95", r: 118 }
       ]
     },
     fruits: {
       name: "🍓 Fruits & Smoothies",
       items: [
-        { icon: "🫐", label: "Blueberry", color: "#3b82f6", r: 15 },
-        { icon: "🍒", label: "Cherry", color: "#dc2626", r: 20 },
-        { icon: "🍓", label: "Strawberry", color: "#e11d48", r: 25 },
-        { icon: "🥝", label: "Kiwi", color: "#65a30d", r: 31 },
-        { icon: "🍊", label: "Orange", color: "#f97316", r: 37 },
-        { icon: "🍎", label: "Apple", color: "#ef4444", r: 44 },
-        { icon: "🥭", label: "Mango", color: "#eab308", r: 51 },
-        { icon: "🍐", label: "Pear", color: "#84cc16", r: 59 },
-        { icon: "🍑", label: "Peach", color: "#fb7185", r: 67 },
-        { icon: "🥤", label: "Berry Shake", color: "#c026d3", r: 76 },
-        { icon: "🥥", label: "Coconut", color: "#78716c", r: 85 },
-        { icon: "🍍", label: "Pineapple", color: "#d97706", r: 95 },
-        { icon: "🍈", label: "Melon", color: "#10b981", r: 106 },
-        { icon: "🍉", label: "Watermelon", color: "#059669", r: 118 }
+        { art: "🫐", icon: "🫐", label: "Blueberry", color: "#3b82f6", r: 15 },
+        { art: "🍒", icon: "🍒", label: "Cherry", color: "#dc2626", r: 20 },
+        { art: "🍓", icon: "🍓", label: "Strawberry", color: "#e11d48", r: 25 },
+        { art: "🥝", icon: "🥝", label: "Kiwi", color: "#65a30d", r: 31 },
+        { art: "🍊", icon: "🍊", label: "Orange", color: "#f97316", r: 37 },
+        { art: "🍎", icon: "🍎", label: "Apple", color: "#ef4444", r: 44 },
+        { art: "🥭", icon: "🥭", label: "Mango", color: "#eab308", r: 51 },
+        { art: "🍐", icon: "🍐", label: "Pear", color: "#84cc16", r: 59 },
+        { art: "🍑", icon: "🍑", label: "Peach", color: "#fb7185", r: 67 },
+        { art: "🥤", icon: "🥤", label: "Berry Shake", color: "#c026d3", r: 76 },
+        { art: "🥥", icon: "🥥", label: "Coconut", color: "#78716c", r: 85 },
+        { art: "🍍", icon: "🍍", label: "Pineapple", color: "#d97706", r: 95 },
+        { art: "🍈", icon: "🍈", label: "Melon", color: "#10b981", r: 106 },
+        { art: "🍉", icon: "🍉", label: "Watermelon", color: "#059669", r: 118 }
       ]
     },
     sweets: {
       name: "🍨 Sweets & Ice Creams",
       items: [
-        { icon: "🍬", label: "Candy", color: "#ec4899", r: 15 },
-        { icon: "🍭", label: "Lollipop", color: "#f43f5e", r: 20 },
-        { icon: "🍪", label: "Cookie", color: "#b45309", r: 25 },
-        { icon: "🧁", label: "Cupcake", color: "#d946ef", r: 31 },
-        { icon: "🍩", label: "Donut", color: "#ea580c", r: 37 },
-        { icon: "🍧", label: "Shaved Ice", color: "#06b6d4", r: 44 },
-        { icon: "🍦", label: "Soft Serve", color: "#f59e0b", r: 51 },
-        { icon: "🍨", label: "Gelato Bowl", color: "#8b5cf6", r: 59 },
-        { icon: "🍮", label: "Caramel Flan", color: "#ca8a04", r: 67 },
-        { icon: "🍫", label: "Choco Bar", color: "#78350f", r: 76 },
-        { icon: "🍰", label: "Pastry Slice", color: "#e11d48", r: 85 },
-        { icon: "🥧", label: "Fruit Pie", color: "#d97706", r: 95 },
-        { icon: "🎂", label: "Celebration Cake", color: "#db2777", r: 106 },
-        { icon: "🏰", label: "Royal Mithai Box", color: "#7c3aed", r: 118 }
+        { art: "🍬", icon: "🍬", label: "Candy", color: "#ec4899", r: 15 },
+        { art: "🍭", icon: "🍭", label: "Lollipop", color: "#f43f5e", r: 20 },
+        { art: "🍪", icon: "🍪", label: "Cookie", color: "#b45309", r: 25 },
+        { art: "🧁", icon: "🧁", label: "Cupcake", color: "#d946ef", r: 31 },
+        { art: "🍩", icon: "🍩", label: "Donut", color: "#ea580c", r: 37 },
+        { art: "🍧", icon: "🍧", label: "Shaved Ice", color: "#06b6d4", r: 44 },
+        { art: "🍦", icon: "🍦", label: "Soft Serve", color: "#f59e0b", r: 51 },
+        { art: "🍨", icon: "🍨", label: "Gelato Bowl", color: "#8b5cf6", r: 59 },
+        { art: "🍮", icon: "🍮", label: "Caramel Flan", color: "#ca8a04", r: 67 },
+        { art: "🍫", icon: "🍫", label: "Choco Bar", color: "#78350f", r: 76 },
+        { art: "🍰", icon: "🍰", label: "Pastry Slice", color: "#e11d48", r: 85 },
+        { art: "🥧", icon: "🥧", label: "Fruit Pie", color: "#d97706", r: 95 },
+        { art: "🎂", icon: "🎂", label: "Celebration Cake", color: "#db2777", r: 106 },
+        { art: "🏰", icon: "🏰", label: "Royal Mithai Box", color: "#7c3aed", r: 118 }
       ]
     },
     cafe: {
       name: "🥐 Cafe & Bakery",
       items: [
-        { icon: "🫘", label: "Coffee Bean", color: "#78350f", r: 15 },
-        { icon: "🥨", label: "Mini Pretzel", color: "#b45309", r: 20 },
-        { icon: "🥐", label: "Croissant", color: "#d97706", r: 25 },
-        { icon: "🥯", label: "Bagel", color: "#ca8a04", r: 31 },
-        { icon: "🧇", label: "Waffle", color: "#ea580c", r: 37 },
-        { icon: "🥞", label: "Pancakes", color: "#f59e0b", r: 44 },
-        { icon: "🥪", label: "Club Sandwich", color: "#16a34a", r: 51 },
-        { icon: "☕", label: "Cappuccino", color: "#92400e", r: 59 },
-        { icon: "🧋", label: "Boba Tea", color: "#9333ea", r: 67 },
-        { icon: "🍕", label: "Veg Pizza Slice", color: "#dc2626", r: 76 },
-        { icon: "🍔", label: "Veggie Burger", color: "#15803d", r: 85 },
-        { icon: "🍝", label: "Pesto Pasta", color: "#4d7c0f", r: 95 },
-        { icon: "🫕", label: "Cheese Fondue", color: "#eab308", r: 106 },
-        { icon: "🍽️", label: "Grand Cafe Platter", color: "#4f46e5", r: 118 }
+        { art: "🫘", icon: "🫘", label: "Coffee Bean", color: "#78350f", r: 15 },
+        { art: "🥨", icon: "🥨", label: "Mini Pretzel", color: "#b45309", r: 20 },
+        { art: "🥐", icon: "🥐", label: "Croissant", color: "#d97706", r: 25 },
+        { art: "🥯", icon: "🥯", label: "Bagel", color: "#ca8a04", r: 31 },
+        { art: "🧇", icon: "🧇", label: "Waffle", color: "#ea580c", r: 37 },
+        { art: "🥞", icon: "🥞", label: "Pancakes", color: "#f59e0b", r: 44 },
+        { art: "🥪", icon: "🥪", label: "Club Sandwich", color: "#16a34a", r: 51 },
+        { art: "☕", icon: "☕", label: "Cappuccino", color: "#92400e", r: 59 },
+        { art: "🧋", icon: "🧋", label: "Boba Tea", color: "#9333ea", r: 67 },
+        { art: "🍕", icon: "🍕", label: "Veg Pizza Slice", color: "#dc2626", r: 76 },
+        { art: "🍔", icon: "🍔", label: "Veggie Burger", color: "#15803d", r: 85 },
+        { art: "🍝", icon: "🍝", label: "Pesto Pasta", color: "#4d7c0f", r: 95 },
+        { art: "🫕", icon: "🫕", label: "Cheese Fondue", color: "#eab308", r: 106 },
+        { art: "🍽️", icon: "🍽️", label: "Grand Cafe Platter", color: "#4f46e5", r: 118 }
       ]
     }
   };
 
   const RADII = [15, 20, 25, 31, 37, 44, 51, 59, 67, 76, 85, 95, 106, 118];
   const MASTER_POOL = Object.values(PACKS).flatMap(p => p.items)
-    .filter((v, i, a) => a.findIndex(x => x.icon === v.icon) === i);
+    .filter((v, i, a) => a.findIndex(x => x.label === v.label) === i);
 
-  // Persistent State
   const store = {
     get: (k, d) => { try { const v = localStorage.getItem("cc_" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
     set: (k, v) => { try { localStorage.setItem("cc_" + k, JSON.stringify(v)); } catch {} }
@@ -402,7 +519,6 @@
     return PACKS[activePackKey]?.items || PACKS.veg.items;
   }
 
-  // Audio Synth
   let audioCtx = null;
   function tone(freq, dur = 0.09, type = "sine", vol = 0.12) {
     if (!soundOn) return;
@@ -418,9 +534,9 @@
     } catch {}
   }
 
-  // Canvas & Physics Setup
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+  const nextMini = document.getElementById("nextMini").getContext("2d");
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
@@ -430,8 +546,6 @@
   let aimX = W / 2, currentTier = 0, nextTier = 1;
   let dropCooldown = 0, overflowTimer = 0, gameOver = false;
   let isDaily = false, rngState = Date.now() % 2147483647;
-
-  // On-Demand Hint (5 drops at 500 pts, recharges 5 drops every +1000 pts)
   let hintEnabled = false, hintCharges = 0, nextHintThreshold = 500;
 
   function seededRand() {
@@ -493,7 +607,14 @@
     document.getElementById("lvPill").textContent = `⭐ Lv ${level}`;
     document.getElementById("scorePill").textContent = score.toLocaleString();
     document.getElementById("chakkarPill").textContent = `🔔 ${dropsUntilChakkar}`;
-    document.getElementById("nextPill").textContent = `Next: ${tiers[nextTier].icon}`;
+
+    nextMini.clearRect(0, 0, 20, 20);
+    nextMini.save();
+    nextMini.translate(10, 10);
+    nextMini.fillStyle = tiers[nextTier].color;
+    nextMini.beginPath(); nextMini.arc(0, 0, 9, 0, Math.PI * 2); nextMini.fill();
+    drawVectorArt(nextMini, tiers[nextTier].art, 9);
+    nextMini.restore();
 
     const prevT = level > 1 ? levelThreshold(level - 1) : 0;
     const nextT = levelThreshold(level);
@@ -523,7 +644,6 @@
         maxLevelUnlocked = level;
         store.set("maxLv", maxLevelUnlocked);
       }
-      // Sweep smallest 2 tiers as level-up breathing room
       bodies = bodies.filter(b => b.tier >= 2);
       tone(660, 0.14, "triangle", 0.15);
       showToast(`⭐ Level ${level} Reached!`);
@@ -569,7 +689,6 @@
     updateHUD();
   }
 
-  // Best Drop Evaluation
   function computeBestDrop() {
     const tiers = getActiveTiers();
     const r = tiers[currentTier].r;
@@ -588,8 +707,8 @@
           }
         }
       }
-      let evalScore = landingY * 1.4; // prefer deeper valleys
-      if (hitTier === currentTier) evalScore += 500; // direct merge!
+      let evalScore = landingY * 1.4;
+      if (hitTier === currentTier) evalScore += 500;
       else if (Math.abs(hitTier - currentTier) === 1) evalScore += 140;
       if (evalScore > bestScore) {
         bestScore = evalScore;
@@ -601,7 +720,6 @@
     return { x: bestX, y: bestY, isMatch };
   }
 
-  // Physics Step
   function step(dt) {
     if (dropCooldown > 0) dropCooldown -= dt;
     if (tiltTimer > 0) {
@@ -678,7 +796,6 @@
       bodies = bodies.filter(b => !b.merged);
     }
 
-    // Overflow Check
     let danger = false;
     for (const b of bodies) {
       if (b.age > 1.0 && b.y - b.r < DANGER_Y && Math.hypot(b.vx, b.vy) < 35) {
@@ -690,9 +807,8 @@
       if (overflowTimer >= 3.0 && !gameOver) {
         gameOver = true;
         saveScoreRecord();
-        const topIcon = getHighestIcon();
         document.getElementById("finalStats").textContent =
-          `Level ${level} • ${score.toLocaleString()} pts • ${topIcon}`;
+          `Level ${level} • ${score.toLocaleString()} pts • ${getHighestLabel()}`;
         document.getElementById("gameOverOverlay").style.display = "flex";
       }
     } else {
@@ -705,11 +821,11 @@
     particles = particles.filter(p => p.life > 0);
   }
 
-  function getHighestIcon() {
+  function getHighestLabel() {
     const tiers = getActiveTiers();
     let maxT = 0;
     for (const b of bodies) if (b.tier > maxT) maxT = b.tier;
-    return tiers[maxT].icon + " " + tiers[maxT].label;
+    return tiers[maxT].label;
   }
 
   function saveScoreRecord() {
@@ -717,7 +833,7 @@
       mode: isDaily ? "Daily" : "Endless",
       level,
       score,
-      top: getHighestIcon(),
+      top: getHighestLabel(),
       date: new Date().toLocaleDateString()
     });
     leaderboard.sort((a, b) => b.score - a.score);
@@ -725,7 +841,6 @@
     store.set("ranks", leaderboard);
   }
 
-  // Rendering
   function draw() {
     const tiers = getActiveTiers();
     ctx.clearRect(0, 0, W, H);
@@ -735,7 +850,6 @@
     ctx.rotate(tiltAngle * 0.45);
     ctx.translate(-W / 2, -H / 2);
 
-    // Brass Dabba Container
     const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, nightMode ? "#2a1f18" : "#fff7e6");
     grad.addColorStop(1, nightMode ? "#1f1611" : "#f3dfb9");
@@ -747,7 +861,6 @@
     ctx.strokeStyle = nightMode ? "#8c6239" : "#c59249";
     ctx.stroke();
 
-    // Danger Overflow Line
     ctx.save();
     ctx.setLineDash([7, 6]);
     ctx.strokeStyle = overflowTimer > 0 ? "#ef4444" : "rgba(217,119,6,0.45)";
@@ -758,7 +871,6 @@
     ctx.stroke();
     ctx.restore();
 
-    // On-Demand Best Drop Hint
     if (!gameOver && hintEnabled && hintCharges > 0) {
       const hint = computeBestDrop();
       ctx.save();
@@ -775,7 +887,6 @@
       ctx.restore();
     }
 
-    // Aiming Guide & Held Snack
     if (!gameOver) {
       const cur = tiers[currentTier];
       const clampedX = Math.min(WALL_R - cur.r - 2, Math.max(WALL_L + cur.r + 2, aimX));
@@ -790,12 +901,10 @@
       drawTreat(clampedX, DANGER_Y - 24, cur.r, cur);
     }
 
-    // Active Snacks
     for (const b of bodies) {
       drawTreat(b.x, b.y, b.r, tiers[b.tier]);
     }
 
-    // Particles
     for (const p of particles) {
       ctx.globalAlpha = Math.max(0, p.life * 2);
       ctx.fillStyle = p.color;
@@ -809,22 +918,18 @@
 
   function drawTreat(x, y, r, tier) {
     ctx.save();
+    ctx.translate(x, y);
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fillStyle = tier.color;
     ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = "rgba(255,255,255,0.68)";
     ctx.stroke();
-
-    ctx.font = `${Math.floor(r * 1.18)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(tier.icon, x, y + 1);
+    drawVectorArt(ctx, tier.art, r);
     ctx.restore();
   }
 
-  // Input Handling
   function pointerX(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -835,10 +940,11 @@
   canvas.addEventListener("touchmove", e => { e.preventDefault(); aimX = pointerX(e); }, { passive: false });
   canvas.addEventListener("touchend", e => { e.preventDefault(); dropSnack(); }, { passive: false });
 
-  // 2P Sync (BroadcastChannel + Optional WebSocket)
+  // 2P Sync (Defaulting to Tailscale Funnel endpoint)
+  const DEFAULT_WS = "wss://modi.tail3f4d21.ts.net/ws";
   const urlParams = new URLSearchParams(location.search);
   let roomCode = (urlParams.get("room") || Math.random().toString(36).substring(2, 6)).toUpperCase();
-  let wsBase = urlParams.get("ws") || store.get("wsUrl", "");
+  let wsBase = urlParams.get("ws") || store.get("wsUrl", DEFAULT_WS);
   let bc = null, ws = null;
 
   function connectRoom() {
@@ -854,8 +960,11 @@
         const clean = wsBase.replace(/\/$/, "");
         ws = new WebSocket(`${clean}/${roomCode}`);
         ws.onopen = () => {
-          document.getElementById("roomStatus").textContent = `Connected to Room ${roomCode}`;
+          document.getElementById("roomStatus").textContent = `Live WS Connected • Room ${roomCode}`;
           broadcast2P({ type: "score", score });
+        };
+        ws.onerror = () => {
+          document.getElementById("roomStatus").textContent = `Local Sync Active (Start server.py for WS)`;
         };
         ws.onmessage = ev => { try { handlePeerMsg(JSON.parse(ev.data)); } catch {} };
       } catch {}
@@ -879,7 +988,6 @@
     }
   }
 
-  // Shareable PNG Score Card
   function downloadScoreCard() {
     const c = document.createElement("canvas");
     c.width = 600; c.height = 340;
@@ -892,7 +1000,7 @@
 
     g.fillStyle = "#fbbf24";
     g.font = "bold 32px sans-serif";
-    g.fillText("☕ Chai & Chakkar", 38, 68);
+    g.fillText("Chai & Chakkar", 38, 68);
 
     g.fillStyle = "#fffaf0";
     g.font = "bold 46px sans-serif";
@@ -904,7 +1012,7 @@
 
     g.fillStyle = "#e7e5e4";
     g.font = "20px sans-serif";
-    g.fillText(`Top Treat: ${getHighestIcon()}`, 38, 240);
+    g.fillText(`Top Treat: ${getHighestLabel()}`, 38, 240);
     g.fillStyle = "#a8a29e";
     g.font = "15px sans-serif";
     g.fillText(new Date().toDateString(), 38, 292);
@@ -915,7 +1023,6 @@
     a.click();
   }
 
-  // Menu UI Wiring
   const backdrop = document.getElementById("modalBackdrop");
   document.getElementById("menuBtn").onclick = () => { renderMenuState(); backdrop.style.display = "flex"; };
   document.getElementById("closeMenuBtn").onclick = () => { backdrop.style.display = "none"; };
@@ -969,6 +1076,17 @@
     showToast(`🔗 Copied Room ${roomCode} Link!`);
   };
 
+  function makeMiniCanvas(tier, size = 26) {
+    const mc = document.createElement("canvas");
+    mc.width = size; mc.height = size;
+    const g = mc.getContext("2d");
+    g.translate(size / 2, size / 2);
+    g.fillStyle = tier.color;
+    g.beginPath(); g.arc(0, 0, size * 0.44, 0, Math.PI * 2); g.fill();
+    drawVectorArt(g, tier.art, size * 0.44);
+    return mc;
+  }
+
   function renderMenuState() {
     document.getElementById("modeEndlessBtn").className = isDaily ? "btn sec" : "btn";
     document.getElementById("modeDailyBtn").className = isDaily ? "btn" : "btn sec";
@@ -984,7 +1102,6 @@
       sel.appendChild(opt);
     }
 
-    // Packs Grid
     const pg = document.getElementById("packGrid");
     pg.innerHTML = "";
     const entries = Object.entries(PACKS);
@@ -1000,7 +1117,6 @@
       pg.appendChild(b);
     }
 
-    // Sticker Collection Shelf
     const sg = document.getElementById("shelfGrid");
     sg.innerHTML = "";
     getActiveTiers().forEach((t, idx) => {
@@ -1008,18 +1124,23 @@
       const cell = document.createElement("div");
       cell.className = "shelfCell" + (unlocked ? "" : " locked");
       cell.title = t.label;
-      cell.innerHTML = `${unlocked ? '<span class="crown">👑</span>' : ""}${t.icon}`;
+      if (unlocked) {
+        const cr = document.createElement("span");
+        cr.className = "crown"; cr.textContent = "👑";
+        cell.appendChild(cr);
+      }
+      cell.appendChild(makeMiniCanvas(t, 28));
       sg.appendChild(cell);
     });
 
-    // Custom 14-Item Builder Pool
     const bp = document.getElementById("builderPool");
     bp.innerHTML = "";
     MASTER_POOL.forEach(item => {
-      const pickedIdx = customIcons.findIndex(x => x.icon === item.icon);
+      const pickedIdx = customIcons.findIndex(x => x.label === item.label);
       const chip = document.createElement("button");
       chip.className = "poolChip" + (pickedIdx >= 0 ? " picked" : "");
-      chip.textContent = `${item.icon} ${item.label}`;
+      chip.appendChild(makeMiniCanvas(item, 18));
+      chip.appendChild(document.createTextNode(item.label));
       chip.onclick = () => {
         if (pickedIdx >= 0) customIcons.splice(pickedIdx, 1);
         else if (customIcons.length < 14) customIcons.push(item);
@@ -1031,7 +1152,6 @@
     document.getElementById("builderCount").textContent = `${customIcons.length} / 14`;
     document.getElementById("builderSaveBtn").disabled = customIcons.length !== 14;
 
-    // Leaderboard
     const rb = document.getElementById("ranksBody");
     rb.innerHTML = leaderboard.length
       ? leaderboard.map((r, i) => `<tr><td>${i + 1}</td><td>${r.mode}</td><td>Lv ${r.level}</td><td>${r.score.toLocaleString()}</td><td>${r.top}</td></tr>`).join("")
@@ -1049,7 +1169,6 @@
     }
   };
 
-  // Main Loop
   let last = performance.now();
   function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000);
