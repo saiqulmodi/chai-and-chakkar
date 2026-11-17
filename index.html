@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#d97706" />
-<link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
 <title>Chai &amp; Chakkar</title>
 <style>
@@ -239,10 +238,6 @@
             <button class="btn sec" id="themeBtn">☀️ Day</button>
           </div>
         </div>
-        <div class="row" id="pwaRow" style="display:none;">
-          <span>Offline App</span>
-          <button class="btn sec" id="installPwaBtn">📲 Install App</button>
-        </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn" id="newGameBtn" style="width:100%;">↻ Start Fresh Run</button>
         </div>
@@ -296,23 +291,12 @@
 
 <script>
 (() => {
-  // Register Offline Service Worker
+  // Unregister any prior service workers so mobile browsers always load live builds
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.getRegistrations()
+      .then(regs => regs.forEach(r => r.unregister()))
+      .catch(() => {});
   }
-  let deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById("pwaRow").style.display = "flex";
-  });
-  document.getElementById("installPwaBtn").onclick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    document.getElementById("pwaRow").style.display = "none";
-  };
 
   // Custom Vector Art Renderer for All Treats
   function drawVectorArt(c, art, r) {
@@ -1232,5 +1216,6 @@
 </script>
 </body>
 </html>
+
 
 
