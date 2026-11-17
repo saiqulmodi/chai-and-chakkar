@@ -264,8 +264,9 @@
       <div class="tabBody hidden" id="tab2P">
         <div style="font-weight:800;margin-bottom:6px;">⚔️ 2-Player Room Link</div>
         <div class="row">
-          <input type="text" id="roomCodeInput" maxlength="10" placeholder="ROOM" style="width:110px;text-transform:uppercase;font-weight:800;" />
-          <button class="btn" id="copyRoomBtn" style="flex:1;">🔗 Copy 2P Link</button>
+          <input type="text" id="roomCodeInput" maxlength="10" placeholder="ROOM" style="width:92px;text-transform:uppercase;font-weight:800;" />
+          <button class="btn sec" id="joinRoomBtn" style="padding:8px 10px;">⚡ Join</button>
+          <button class="btn" id="copyRoomBtn" style="flex:1;">🔗 Share Link</button>
         </div>
         <div style="margin-bottom:10px;">
           <input type="text" id="wsUrlInput" placeholder="WebSocket URL (e.g. wss://modi.tail3f4d21.ts.net/ws)" />
@@ -571,7 +572,21 @@
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
-  let bodies = [], particles = [];
+  let bodies = [], particles = [], popups = [], confetti = [];
+
+  // Mobile Screen Wake-Lock (keeps phone screen awake while playing)
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ("wakeLock" in navigator && document.visibilityState === "visible") {
+        wakeLock = await navigator.wakeLock.request("screen");
+      }
+    } catch {}
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") requestWakeLock();
+  });
+  window.addEventListener("pointerdown", () => { if (!wakeLock) requestWakeLock(); }, { once: true });
   let score = 0, level = 1, dropsUntilChakkar = 12;
   let tiltAngle = 0, tiltTimer = 0;
   let aimX = W / 2, currentTier = 0, nextTier = 1;
@@ -611,7 +626,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = [];
+    bodies = []; particles = []; popups = []; confetti = [];
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -677,6 +692,7 @@
       }
       bodies = bodies.filter(b => b.tier >= 2);
       playLevelFanfare();
+      spawnConfetti();
       showToast(`⭐ Level ${level} Reached!`);
     }
   }
@@ -686,6 +702,28 @@
       const a = (Math.PI * 2 * i) / count + Math.random() * 0.4;
       const spd = 60 + Math.random() * 140;
       particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.45, color });
+    }
+  }
+
+  function spawnPopup(x, y, text, color = "#f59e0b", big = false) {
+    popups.push({ x, y, text, color, big, life: 0.95, maxLife: 0.95 });
+  }
+
+  function spawnConfetti() {
+    const colors = ["#f59e0b", "#10b981", "#ec4899", "#3b82f6", "#eab308", "#a855f7"];
+    for (let i = 0; i < 42; i++) {
+      confetti.push({
+        x: WALL_L + Math.random() * (WALL_R - WALL_L),
+        y: DANGER_Y - 10 - Math.random() * 40,
+        vx: (Math.random() - 0.5) * 140,
+        vy: -60 - Math.random() * 110,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 10,
+        w: 6 + Math.random() * 5,
+        h: 4 + Math.random() * 4,
+        color: colors[i % colors.length],
+        life: 1.8 + Math.random() * 0.7
+      });
     }
   }
 
@@ -792,14 +830,14 @@
               a.merged = b.merged = true;
               const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
               if (a.tier === 13) {
-                score += 50000;
+                score += 50000; spawnPopup(mx, my, "+50,000!", "#fbbf24", true); spawnConfetti();
                 spawnParticles(mx, my, "#fbbf24", 32);
                 tone(980, 0.3, "triangle", 0.18);
                 showToast("👑 GRAND FEAST +50,000!"); buzz([60, 40, 80]);
               } else {
                 const nt = a.tier + 1;
                 const pts = Math.pow(2, nt) * 10;
-                score += pts;
+                score += pts; spawnPopup(mx, my, `+${pts.toLocaleString()}`, nt >= 8 ? "#10b981" : "#f59e0b", nt >= 10);
                 bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
                 spawnParticles(mx, my, tiers[nt].color, 14);
@@ -850,6 +888,21 @@
       p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
     }
     particles = particles.filter(p => p.life > 0);
+
+    for (const pop of popups) {
+      pop.y -= 42 * dt;
+      pop.life -= dt;
+    }
+    popups = popups.filter(pop => pop.life > 0);
+
+    for (const c of confetti) {
+      c.vy += 260 * dt;
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.rot += c.vrot * dt;
+      c.life -= dt;
+    }
+    confetti = confetti.filter(c => c.life > 0);
   }
 
   function getHighestLabel() {
@@ -942,6 +995,29 @@
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    for (const c of confetti) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, c.life);
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+      ctx.restore();
+    }
+
+    for (const pop of popups) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, pop.life / pop.maxLife);
+      ctx.font = pop.big ? "900 20px sans-serif" : "800 15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(28,16,8,0.85)";
+      ctx.strokeText(pop.text, pop.x, pop.y);
+      ctx.fillStyle = pop.color;
+      ctx.fillText(pop.text, pop.x, pop.y);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -1095,6 +1171,14 @@
 
   document.getElementById("roomCodeInput").value = roomCode;
   document.getElementById("wsUrlInput").value = wsBase;
+  document.getElementById("joinRoomBtn").onclick = () => {
+    roomCode = (document.getElementById("roomCodeInput").value || "CHAI").trim().toUpperCase();
+    wsBase = document.getElementById("wsUrlInput").value.trim();
+    store.set("wsUrl", wsBase);
+    connectRoom();
+    backdrop.style.display = "none";
+    showToast(`⚔️ Joined Room ${roomCode}`);
+  };
   document.getElementById("copyRoomBtn").onclick = () => {
     roomCode = (document.getElementById("roomCodeInput").value || "CHAI").toUpperCase();
     wsBase = document.getElementById("wsUrlInput").value.trim();
@@ -1216,6 +1300,7 @@
 </script>
 </body>
 </html>
+
 
 
 
