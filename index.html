@@ -604,7 +604,7 @@
   const W = 400, H = 600;
   const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
 
-  let bodies = [], particles = [], popups = [], confetti = []; let peerScore = 0, peerLevel = 1, peerConnected = false;
+  let bodies = [], particles = [], popups = [], confetti = []; let chainCount = 0, lastMergeAt = 0; let peerScore = 0, peerLevel = 1, peerConnected = false;
 
   // Mobile Screen Wake-Lock (keeps phone screen awake while playing)
   let wakeLock = null;
@@ -658,7 +658,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = [];
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0;
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -878,7 +878,19 @@
               } else {
                 const nt = a.tier + 1;
                 const pts = Math.pow(2, nt) * 10;
-                score += pts; spawnPopup(mx, my, `+${pts.toLocaleString()}`, nt >= 8 ? "#10b981" : "#f59e0b", nt >= 10);
+                const nowMs = performance.now();
+          chainCount = (nowMs - lastMergeAt <= 1400) ? (chainCount + 1) : 1;
+          lastMergeAt = nowMs;
+          const comboMult = 1 + (chainCount - 1) * 0.25;
+          const totalPts = Math.round(pts * comboMult);
+          const bonusPts = totalPts - pts;
+          score += totalPts;
+          spawnPopup(mx, my, `+${totalPts.toLocaleString()}`, nt >= 8 ? "#10b981" : "#f59e0b", nt >= 10 || chainCount >= 3);
+          if (chainCount >= 2) {
+            spawnPopup(mx, my - 24, `🔥 x${chainCount} COMBO! (+${bonusPts.toLocaleString()})`, "#ec4899", true);
+            tone(480 + Math.min(chainCount, 8) * 75, 0.11, "triangle", 0.13);
+            buzz([18, 20, 28]);
+          }
                 bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
                 spawnParticles(mx, my, tiers[nt].color, 14);
@@ -1477,6 +1489,7 @@
 </script>
 </body>
 </html>
+
 
 
 
