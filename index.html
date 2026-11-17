@@ -1,0 +1,1068 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Chai &amp; Chakkar</title>
+<style>
+  :root {
+    --bg: #fdf6e9;
+    --bg2: #f4e6cc;
+    --card: #fffaf0;
+    --ink: #3b2314;
+    --muted: #7c5c43;
+    --accent: #d97706;
+    --accent2: #b45309;
+    --border: #d6b88d;
+    --dabba: #e7c896;
+    --dabba-dark: #b6894b;
+  }
+  body.night {
+    --bg: #181310;
+    --bg2: #241c17;
+    --card: #2c221c;
+    --ink: #f8ede3;
+    --muted: #bfa894;
+    --accent: #f59e0b;
+    --accent2: #d97706;
+    --border: #5c4330;
+    --dabba: #3a2b20;
+    --dabba-dark: #8c6239;
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at top, var(--bg), var(--bg2));
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #topbar {
+    width: min(420px, 96vw);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 4px; gap: 6px;
+  }
+  #title {
+    font-weight: 800; font-size: 1.08rem; letter-spacing: 0.3px;
+    color: var(--accent2); white-space: nowrap;
+  }
+  .pills { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; }
+  .pill {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px 7px; font-size: 0.72rem;
+    font-weight: 700; display: flex; align-items: center; gap: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  #menuBtn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; padding: 6px 11px; font-weight: 800;
+    font-size: 0.82rem; cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+  #menuBtn:active { transform: scale(0.96); }
+  #lvBarWrap {
+    width: min(420px, 96vw); height: 6px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 99px;
+    overflow: hidden; margin-bottom: 5px;
+  }
+  #lvBar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #f59e0b, #10b981);
+    transition: width 0.25s ease;
+  }
+  #canvasWrap {
+    position: relative;
+    width: min(400px, 95vw);
+    height: min(600px, 82vh);
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas {
+    width: 100%; height: 100%;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    touch-action: none;
+    cursor: crosshair;
+  }
+  #toast {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,20,12,0.88); color: #fff;
+    padding: 5px 12px; border-radius: 99px; font-size: 0.78rem;
+    font-weight: 700; pointer-events: none; opacity: 0;
+    transition: opacity 0.25s; white-space: nowrap; z-index: 5;
+  }
+  #peerBadge {
+    position: absolute; top: 44px; right: 10px;
+    background: rgba(16,185,129,0.92); color: #fff;
+    padding: 3px 8px; border-radius: 8px; font-size: 0.7rem;
+    font-weight: 800; display: none; z-index: 4;
+  }
+  /* Menu Drawer */
+  #modalBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+    display: none; align-items: center; justify-content: center;
+    z-index: 20; padding: 12px;
+  }
+  #modal {
+    width: min(410px, 96vw); max-height: 86vh;
+    background: var(--card); color: var(--ink);
+    border: 2px solid var(--border); border-radius: 18px;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+  }
+  .modalHeader {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+  }
+  .tabs { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--border); }
+  .tab {
+    flex: 1; padding: 7px 4px; font-size: 0.75rem; font-weight: 800;
+    background: transparent; border: none; color: var(--muted);
+    border-bottom: 3px solid transparent; cursor: pointer;
+  }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tabBody { padding: 12px 14px; overflow-y: auto; flex: 1; font-size: 0.84rem; }
+  .hidden { display: none !important; }
+  .btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; padding: 8px 12px; font-weight: 700;
+    font-size: 0.8rem; cursor: pointer;
+  }
+  .btn.sec {
+    background: var(--bg2); color: var(--ink); border: 1px solid var(--border);
+  }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .packGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .packBtn {
+    padding: 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--ink); font-weight: 700;
+    font-size: 0.76rem; cursor: pointer; text-align: left;
+  }
+  .packBtn.active { border: 2px solid var(--accent); background: var(--card); }
+  .shelfGrid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    background: var(--bg2); padding: 8px; border-radius: 12px;
+    border: 1px solid var(--border); margin-top: 6px;
+  }
+  .shelfCell {
+    aspect-ratio: 1; border-radius: 8px; background: var(--card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 1.05rem; border: 1px solid var(--border); position: relative;
+  }
+  .shelfCell.locked { opacity: 0.35; filter: grayscale(1); }
+  .shelfCell .crown { position: absolute; top: -4px; right: -2px; font-size: 0.62rem; }
+  .builderPool {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
+    max-height: 135px; overflow-y: auto; padding: 6px;
+    background: var(--bg2); border-radius: 10px;
+  }
+  .poolChip {
+    padding: 4px 7px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); font-size: 0.78rem; cursor: pointer;
+  }
+  .poolChip.picked { background: var(--accent); color: #fff; border-color: var(--accent2); }
+  input[type="text"], select {
+    width: 100%; padding: 7px 9px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--ink); font-size: 0.8rem;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: left; }
+  #gameOverOverlay {
+    position: absolute; inset: 0; background: rgba(24,16,10,0.84);
+    border-radius: 18px; display: none; flex-direction: column;
+    align-items: center; justify-content: center; color: #fff;
+    gap: 10px; padding: 18px; text-align: center; z-index: 10;
+  }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <div id="title">☕ Chai &amp; Chakkar</div>
+    <div class="pills">
+      <div class="pill" id="lvPill">⭐ Lv 1</div>
+      <div class="pill" id="scorePill">0</div>
+      <div class="pill" id="chakkarPill">🔔 12</div>
+      <div class="pill" id="nextPill">Next: 🌿</div>
+    </div>
+    <button id="menuBtn">☰ Menu</button>
+  </div>
+  <div id="lvBarWrap"><div id="lvBar"></div></div>
+
+  <div id="canvasWrap">
+    <div id="toast"></div>
+    <div id="peerBadge">2P: 0</div>
+    <canvas id="game" width="400" height="600"></canvas>
+    <div id="gameOverOverlay">
+      <div style="font-size:1.35rem;font-weight:900;">Dabba Full!</div>
+      <div id="finalStats" style="font-size:0.9rem;opacity:0.92;"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button class="btn" id="restartBtn">↻ Play Again</button>
+        <button class="btn sec" id="overShareBtn">📸 Share Card</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalBackdrop">
+    <div id="modal">
+      <div class="modalHeader">
+        <strong style="font-size:0.95rem;">☰ Menu</strong>
+        <button class="btn sec" id="closeMenuBtn" style="padding:4px 10px;">✕</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="tabPlay">Play &amp; Lv</button>
+        <button class="tab" data-tab="tabItems">14 Items</button>
+        <button class="tab" data-tab="tab2P">2P &amp; Card</button>
+        <button class="tab" data-tab="tabRanks">Ranks</button>
+      </div>
+
+      <!-- TAB 1: PLAY & LEVEL -->
+      <div class="tabBody" id="tabPlay">
+        <div class="row">
+          <span>Mode</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn" id="modeEndlessBtn">♾️ Endless</button>
+            <button class="btn sec" id="modeDailyBtn">📅 Daily</button>
+          </div>
+        </div>
+        <div class="row">
+          <span>Start Level (1 → ∞)</span>
+          <select id="startLvSelect" style="width:130px;"></select>
+        </div>
+        <div class="row">
+          <span>On-Demand Drop Hint</span>
+          <button class="btn sec" id="hintToggleBtn" disabled>🔒 500 pts</button>
+        </div>
+        <div class="row">
+          <span>Sound &amp; Theme</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn sec" id="soundBtn">🔊 Sound: ON</button>
+            <button class="btn sec" id="themeBtn">☀️ Day</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" id="newGameBtn" style="width:100%;">↻ Start Fresh Run</button>
+        </div>
+      </div>
+
+      <!-- TAB 2: 14 ITEMS, COLLECTION ALBUM & CUSTOM BUILDER -->
+      <div class="tabBody hidden" id="tabItems">
+        <div class="packGrid" id="packGrid"></div>
+        <div style="font-weight:800;font-size:0.78rem;margin-top:4px;">🏆 Sticker Collection Shelf</div>
+        <div class="shelfGrid" id="shelfGrid"></div>
+
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+          <div class="row" style="margin-bottom:4px;">
+            <strong style="font-size:0.8rem;">🎨 Custom 14-Item Builder</strong>
+            <span id="builderCount" style="font-size:0.75rem;font-weight:700;">0 / 14</span>
+          </div>
+          <div class="builderPool" id="builderPool"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn sec" id="builderClearBtn" style="flex:1;">Clear</button>
+            <button class="btn" id="builderSaveBtn" style="flex:2;" disabled>Use Custom Pack (14)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: 2P ROOM & SHAREABLE CARD -->
+      <div class="tabBody hidden" id="tab2P">
+        <div style="font-weight:800;margin-bottom:6px;">⚔️ 2-Player Room Link</div>
+        <div class="row">
+          <input type="text" id="roomCodeInput" maxlength="10" placeholder="ROOM" style="width:110px;text-transform:uppercase;font-weight:800;" />
+          <button class="btn" id="copyRoomBtn" style="flex:1;">🔗 Copy 2P Link</button>
+        </div>
+        <div style="margin-bottom:10px;">
+          <input type="text" id="wsUrlInput" placeholder="Optional WebSocket URL (e.g. wss://.../ws)" />
+        </div>
+        <div id="roomStatus" style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">
+          Same-browser sync active. Add WebSocket URL for cross-device play.
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-weight:800;margin-bottom:6px;">📸 Shareable PNG Score Card</div>
+          <button class="btn" id="downloadCardBtn" style="width:100%;">⬇ Download Score Card PNG</button>
+        </div>
+      </div>
+
+      <!-- TAB 4: RANKS -->
+      <div class="tabBody hidden" id="tabRanks">
+        <table>
+          <thead><tr><th>#</th><th>Mode</th><th>Level</th><th>Score</th><th>Top Treat</th></tr></thead>
+          <tbody id="ranksBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const PACKS = {
+    veg: {
+      name: "🍛 14 Veg Food & Drinks",
+      items: [
+        { icon: "🌿", label: "Elaichi", color: "#4d7c0f", r: 15 },
+        { icon: "🟤", label: "Rasgulla", color: "#92400e", r: 20 },
+        { icon: "🍡", label: "Kulfi Stick", color: "#f59e0b", r: 25 },
+        { icon: "🥟", label: "Pani Puri", color: "#d97706", r: 31 },
+        { icon: "🔺", label: "Samosa", color: "#ea580c", r: 37 },
+        { icon: "🧋", label: "Cold Coffee", color: "#78350f", r: 44 },
+        { icon: "🥭", label: "Mango Lassi", color: "#eab308", r: 51 },
+        { icon: "🍔", label: "Vada Pav", color: "#dc2626", r: 59 },
+        { icon: "🥨", label: "Jalebi Coil", color: "#f97316", r: 67 },
+        { icon: "☕", label: "Masala Chai", color: "#b45309", r: 76 },
+        { icon: "🍨", label: "Ice Sundae", color: "#ec4899", r: 85 },
+        { icon: "🧀", label: "Paneer Tikka", color: "#e11d48", r: 95 },
+        { icon: "🌮", label: "Masala Dosa", color: "#ca8a04", r: 106 },
+        { icon: "👑", label: "Royal Veg Thali", color: "#7c3aed", r: 118 }
+      ]
+    },
+    fruits: {
+      name: "🍓 Fruits & Smoothies",
+      items: [
+        { icon: "🫐", label: "Blueberry", color: "#3b82f6", r: 15 },
+        { icon: "🍒", label: "Cherry", color: "#dc2626", r: 20 },
+        { icon: "🍓", label: "Strawberry", color: "#e11d48", r: 25 },
+        { icon: "🥝", label: "Kiwi", color: "#65a30d", r: 31 },
+        { icon: "🍊", label: "Orange", color: "#f97316", r: 37 },
+        { icon: "🍎", label: "Apple", color: "#ef4444", r: 44 },
+        { icon: "🥭", label: "Mango", color: "#eab308", r: 51 },
+        { icon: "🍐", label: "Pear", color: "#84cc16", r: 59 },
+        { icon: "🍑", label: "Peach", color: "#fb7185", r: 67 },
+        { icon: "🥤", label: "Berry Shake", color: "#c026d3", r: 76 },
+        { icon: "🥥", label: "Coconut", color: "#78716c", r: 85 },
+        { icon: "🍍", label: "Pineapple", color: "#d97706", r: 95 },
+        { icon: "🍈", label: "Melon", color: "#10b981", r: 106 },
+        { icon: "🍉", label: "Watermelon", color: "#059669", r: 118 }
+      ]
+    },
+    sweets: {
+      name: "🍨 Sweets & Ice Creams",
+      items: [
+        { icon: "🍬", label: "Candy", color: "#ec4899", r: 15 },
+        { icon: "🍭", label: "Lollipop", color: "#f43f5e", r: 20 },
+        { icon: "🍪", label: "Cookie", color: "#b45309", r: 25 },
+        { icon: "🧁", label: "Cupcake", color: "#d946ef", r: 31 },
+        { icon: "🍩", label: "Donut", color: "#ea580c", r: 37 },
+        { icon: "🍧", label: "Shaved Ice", color: "#06b6d4", r: 44 },
+        { icon: "🍦", label: "Soft Serve", color: "#f59e0b", r: 51 },
+        { icon: "🍨", label: "Gelato Bowl", color: "#8b5cf6", r: 59 },
+        { icon: "🍮", label: "Caramel Flan", color: "#ca8a04", r: 67 },
+        { icon: "🍫", label: "Choco Bar", color: "#78350f", r: 76 },
+        { icon: "🍰", label: "Pastry Slice", color: "#e11d48", r: 85 },
+        { icon: "🥧", label: "Fruit Pie", color: "#d97706", r: 95 },
+        { icon: "🎂", label: "Celebration Cake", color: "#db2777", r: 106 },
+        { icon: "🏰", label: "Royal Mithai Box", color: "#7c3aed", r: 118 }
+      ]
+    },
+    cafe: {
+      name: "🥐 Cafe & Bakery",
+      items: [
+        { icon: "🫘", label: "Coffee Bean", color: "#78350f", r: 15 },
+        { icon: "🥨", label: "Mini Pretzel", color: "#b45309", r: 20 },
+        { icon: "🥐", label: "Croissant", color: "#d97706", r: 25 },
+        { icon: "🥯", label: "Bagel", color: "#ca8a04", r: 31 },
+        { icon: "🧇", label: "Waffle", color: "#ea580c", r: 37 },
+        { icon: "🥞", label: "Pancakes", color: "#f59e0b", r: 44 },
+        { icon: "🥪", label: "Club Sandwich", color: "#16a34a", r: 51 },
+        { icon: "☕", label: "Cappuccino", color: "#92400e", r: 59 },
+        { icon: "🧋", label: "Boba Tea", color: "#9333ea", r: 67 },
+        { icon: "🍕", label: "Veg Pizza Slice", color: "#dc2626", r: 76 },
+        { icon: "🍔", label: "Veggie Burger", color: "#15803d", r: 85 },
+        { icon: "🍝", label: "Pesto Pasta", color: "#4d7c0f", r: 95 },
+        { icon: "🫕", label: "Cheese Fondue", color: "#eab308", r: 106 },
+        { icon: "🍽️", label: "Grand Cafe Platter", color: "#4f46e5", r: 118 }
+      ]
+    }
+  };
+
+  const RADII = [15, 20, 25, 31, 37, 44, 51, 59, 67, 76, 85, 95, 106, 118];
+  const MASTER_POOL = Object.values(PACKS).flatMap(p => p.items)
+    .filter((v, i, a) => a.findIndex(x => x.icon === v.icon) === i);
+
+  // Persistent State
+  const store = {
+    get: (k, d) => { try { const v = localStorage.getItem("cc_" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set: (k, v) => { try { localStorage.setItem("cc_" + k, JSON.stringify(v)); } catch {} }
+  };
+
+  let activePackKey = store.get("packKey", "veg");
+  let customIcons = store.get("customIcons", []);
+  let unlockedMap = store.get("unlockedMap", {});
+  let maxLevelUnlocked = store.get("maxLv", 1);
+  let leaderboard = store.get("ranks", []);
+  let soundOn = store.get("sound", true);
+  let nightMode = store.get("night", false);
+  if (nightMode) document.body.classList.add("night");
+
+  function getActiveTiers() {
+    if (activePackKey === "custom" && customIcons.length === 14) {
+      return customIcons.map((item, idx) => ({ ...item, r: RADII[idx] }));
+    }
+    return PACKS[activePackKey]?.items || PACKS.veg.items;
+  }
+
+  // Audio Synth
+  let audioCtx = null;
+  function tone(freq, dur = 0.09, type = "sine", vol = 0.12) {
+    if (!soundOn) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch {}
+  }
+
+  // Canvas & Physics Setup
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const W = 400, H = 600;
+  const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
+
+  let bodies = [], particles = [];
+  let score = 0, level = 1, dropsUntilChakkar = 12;
+  let tiltAngle = 0, tiltTimer = 0;
+  let aimX = W / 2, currentTier = 0, nextTier = 1;
+  let dropCooldown = 0, overflowTimer = 0, gameOver = false;
+  let isDaily = false, rngState = Date.now() % 2147483647;
+
+  // On-Demand Hint (5 drops at 500 pts, recharges 5 drops every +1000 pts)
+  let hintEnabled = false, hintCharges = 0, nextHintThreshold = 500;
+
+  function seededRand() {
+    if (!isDaily) return Math.random();
+    rngState = (rngState * 48271) % 2147483647;
+    return rngState / 2147483647;
+  }
+  function pickSpawnTier() {
+    const r = seededRand();
+    if (r < 0.35) return 0;
+    if (r < 0.65) return 1;
+    if (r < 0.85) return 2;
+    if (r < 0.95) return 3;
+    return 4;
+  }
+  function levelThreshold(lv) { return Math.floor(450 * Math.pow(lv, 1.38)); }
+
+  function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.opacity = "1";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = "0"; }, 2200);
+  }
+
+  function unlockTier(idx) {
+    const k = activePackKey + "_" + idx;
+    if (!unlockedMap[k]) {
+      unlockedMap[k] = true;
+      store.set("unlockedMap", unlockedMap);
+    }
+  }
+
+  function resetGame(startLv = 1) {
+    bodies = []; particles = [];
+    level = Math.max(1, startLv);
+    score = level > 1 ? levelThreshold(level - 1) : 0;
+    dropsUntilChakkar = 12;
+    tiltAngle = 0; tiltTimer = 0;
+    overflowTimer = 0; gameOver = false;
+    hintEnabled = false; hintCharges = 0; nextHintThreshold = 500;
+    while (score >= nextHintThreshold) {
+      hintCharges = 5;
+      nextHintThreshold += 1000;
+    }
+    if (isDaily) {
+      const d = new Date();
+      rngState = (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()) % 2147483647;
+    }
+    currentTier = pickSpawnTier();
+    nextTier = pickSpawnTier();
+    unlockTier(currentTier);
+    document.getElementById("gameOverOverlay").style.display = "none";
+    updateHUD();
+  }
+
+  function updateHUD() {
+    const tiers = getActiveTiers();
+    document.getElementById("lvPill").textContent = `⭐ Lv ${level}`;
+    document.getElementById("scorePill").textContent = score.toLocaleString();
+    document.getElementById("chakkarPill").textContent = `🔔 ${dropsUntilChakkar}`;
+    document.getElementById("nextPill").textContent = `Next: ${tiers[nextTier].icon}`;
+
+    const prevT = level > 1 ? levelThreshold(level - 1) : 0;
+    const nextT = levelThreshold(level);
+    const pct = Math.min(100, Math.max(0, ((score - prevT) / (nextT - prevT)) * 100));
+    document.getElementById("lvBar").style.width = pct + "%";
+
+    const hintBtn = document.getElementById("hintToggleBtn");
+    if (hintCharges > 0) {
+      hintBtn.disabled = false;
+      hintBtn.textContent = `🎯 Hint: ${hintEnabled ? "ON" : "OFF"} (${hintCharges} left)`;
+    } else {
+      hintBtn.disabled = true;
+      hintEnabled = false;
+      hintBtn.textContent = `🔒 Hint (${nextHintThreshold.toLocaleString()} pts)`;
+    }
+  }
+
+  function checkProgression() {
+    while (score >= nextHintThreshold) {
+      hintCharges = 5;
+      nextHintThreshold += 1000;
+      showToast("🎯 5 Drop Hints Ready in Menu!");
+    }
+    while (score >= levelThreshold(level)) {
+      level++;
+      if (level > maxLevelUnlocked) {
+        maxLevelUnlocked = level;
+        store.set("maxLv", maxLevelUnlocked);
+      }
+      // Sweep smallest 2 tiers as level-up breathing room
+      bodies = bodies.filter(b => b.tier >= 2);
+      tone(660, 0.14, "triangle", 0.15);
+      showToast(`⭐ Level ${level} Reached!`);
+    }
+  }
+
+  function spawnParticles(x, y, color, count = 14) {
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const spd = 60 + Math.random() * 140;
+      particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.45, color });
+    }
+  }
+
+  function dropSnack() {
+    if (gameOver || dropCooldown > 0) return;
+    const tiers = getActiveTiers();
+    const r = tiers[currentTier].r;
+    const x = Math.min(WALL_R - r - 2, Math.max(WALL_L + r + 2, aimX));
+    bodies.push({ x, y: DANGER_Y - 12, vx: 0, vy: 40, tier: currentTier, r, age: 0, merged: false });
+    unlockTier(currentTier);
+    tone(190, 0.07, "sine", 0.1);
+    dropCooldown = 0.42;
+
+    if (hintEnabled && hintCharges > 0) {
+      hintCharges--;
+      if (hintCharges === 0) hintEnabled = false;
+    }
+
+    dropsUntilChakkar--;
+    if (dropsUntilChakkar <= 0) {
+      dropsUntilChakkar = 12;
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      tiltAngle = dir * Math.min(0.24, 0.14 + level * 0.008);
+      tiltTimer = 2.4;
+      tone(880, 0.25, "triangle", 0.14);
+      showToast("🔔 Chakkar Tilt!");
+      broadcast2P({ type: "chakkar", score });
+    }
+
+    currentTier = nextTier;
+    nextTier = pickSpawnTier();
+    updateHUD();
+  }
+
+  // Best Drop Evaluation
+  function computeBestDrop() {
+    const tiers = getActiveTiers();
+    const r = tiers[currentTier].r;
+    let bestX = W / 2, bestY = FLOOR - r, bestScore = -1e9, isMatch = false;
+    for (let x = WALL_L + r + 4; x <= WALL_R - r - 4; x += 12) {
+      let landingY = FLOOR - r;
+      let hitTier = -1;
+      for (const b of bodies) {
+        const dx = Math.abs(b.x - x);
+        const sumR = b.r + r;
+        if (dx < sumR) {
+          const yCand = b.y - Math.sqrt(sumR * sumR - dx * dx);
+          if (yCand < landingY) {
+            landingY = yCand;
+            hitTier = b.tier;
+          }
+        }
+      }
+      let evalScore = landingY * 1.4; // prefer deeper valleys
+      if (hitTier === currentTier) evalScore += 500; // direct merge!
+      else if (Math.abs(hitTier - currentTier) === 1) evalScore += 140;
+      if (evalScore > bestScore) {
+        bestScore = evalScore;
+        bestX = x;
+        bestY = landingY;
+        isMatch = (hitTier === currentTier);
+      }
+    }
+    return { x: bestX, y: bestY, isMatch };
+  }
+
+  // Physics Step
+  function step(dt) {
+    if (dropCooldown > 0) dropCooldown -= dt;
+    if (tiltTimer > 0) {
+      tiltTimer -= dt;
+      if (tiltTimer <= 0) tiltAngle = 0;
+    }
+
+    const tiers = getActiveTiers();
+    const g = 980;
+    const gx = Math.sin(tiltAngle) * g;
+    const gy = Math.cos(tiltAngle) * g;
+    const subSteps = 4;
+    const sdt = dt / subSteps;
+
+    for (let s = 0; s < subSteps; s++) {
+      for (const b of bodies) {
+        b.age += sdt;
+        b.vx += gx * sdt;
+        b.vy += gy * sdt;
+        b.vx *= 0.995;
+        b.vy *= 0.995;
+        b.x += b.vx * sdt;
+        b.y += b.vy * sdt;
+
+        if (b.x - b.r < WALL_L) { b.x = WALL_L + b.r; b.vx = Math.abs(b.vx) * 0.22; }
+        if (b.x + b.r > WALL_R) { b.x = WALL_R - b.r; b.vx = -Math.abs(b.vx) * 0.22; }
+        if (b.y + b.r > FLOOR)  { b.y = FLOOR - b.r;  b.vy = -Math.abs(b.vy) * 0.2; b.vx *= 0.92; }
+      }
+
+      for (let i = 0; i < bodies.length; i++) {
+        for (let j = i + 1; j < bodies.length; j++) {
+          const a = bodies[i], b = bodies[j];
+          if (a.merged || b.merged) continue;
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          const minDist = a.r + b.r;
+          if (dist < minDist) {
+            if (a.tier === b.tier) {
+              a.merged = b.merged = true;
+              const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+              if (a.tier === 13) {
+                score += 50000;
+                spawnParticles(mx, my, "#fbbf24", 32);
+                tone(980, 0.3, "triangle", 0.18);
+                showToast("👑 GRAND FEAST +50,000!");
+              } else {
+                const nt = a.tier + 1;
+                const pts = Math.pow(2, nt) * 10;
+                score += pts;
+                bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
+                unlockTier(nt);
+                spawnParticles(mx, my, tiers[nt].color, 14);
+                tone(260 + nt * 42, 0.11, "sine", 0.13);
+              }
+              checkProgression();
+              updateHUD();
+              broadcast2P({ type: "score", score });
+            } else {
+              const overlap = (minDist - dist) * 0.5;
+              const nx = dx / dist, ny = dy / dist;
+              a.x -= nx * overlap; a.y -= ny * overlap;
+              b.x += nx * overlap; b.y += ny * overlap;
+              const rvx = b.vx - a.vx, rvy = b.vy - a.vy;
+              const velN = rvx * nx + rvy * ny;
+              if (velN < 0) {
+                const imp = -(1 + 0.22) * velN * 0.5;
+                a.vx -= imp * nx; a.vy -= imp * ny;
+                b.vx += imp * nx; b.vy += imp * ny;
+              }
+            }
+          }
+        }
+      }
+      bodies = bodies.filter(b => !b.merged);
+    }
+
+    // Overflow Check
+    let danger = false;
+    for (const b of bodies) {
+      if (b.age > 1.0 && b.y - b.r < DANGER_Y && Math.hypot(b.vx, b.vy) < 35) {
+        danger = true; break;
+      }
+    }
+    if (danger) {
+      overflowTimer += dt;
+      if (overflowTimer >= 3.0 && !gameOver) {
+        gameOver = true;
+        saveScoreRecord();
+        const topIcon = getHighestIcon();
+        document.getElementById("finalStats").textContent =
+          `Level ${level} • ${score.toLocaleString()} pts • ${topIcon}`;
+        document.getElementById("gameOverOverlay").style.display = "flex";
+      }
+    } else {
+      overflowTimer = Math.max(0, overflowTimer - dt * 1.5);
+    }
+
+    for (const p of particles) {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+    }
+    particles = particles.filter(p => p.life > 0);
+  }
+
+  function getHighestIcon() {
+    const tiers = getActiveTiers();
+    let maxT = 0;
+    for (const b of bodies) if (b.tier > maxT) maxT = b.tier;
+    return tiers[maxT].icon + " " + tiers[maxT].label;
+  }
+
+  function saveScoreRecord() {
+    leaderboard.push({
+      mode: isDaily ? "Daily" : "Endless",
+      level,
+      score,
+      top: getHighestIcon(),
+      date: new Date().toLocaleDateString()
+    });
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 15);
+    store.set("ranks", leaderboard);
+  }
+
+  // Rendering
+  function draw() {
+    const tiers = getActiveTiers();
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(tiltAngle * 0.45);
+    ctx.translate(-W / 2, -H / 2);
+
+    // Brass Dabba Container
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, nightMode ? "#2a1f18" : "#fff7e6");
+    grad.addColorStop(1, nightMode ? "#1f1611" : "#f3dfb9");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(10, 10, W - 20, H - 20, 18);
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = nightMode ? "#8c6239" : "#c59249";
+    ctx.stroke();
+
+    // Danger Overflow Line
+    ctx.save();
+    ctx.setLineDash([7, 6]);
+    ctx.strokeStyle = overflowTimer > 0 ? "#ef4444" : "rgba(217,119,6,0.45)";
+    ctx.lineWidth = overflowTimer > 0 ? 3 : 2;
+    ctx.beginPath();
+    ctx.moveTo(WALL_L, DANGER_Y);
+    ctx.lineTo(WALL_R, DANGER_Y);
+    ctx.stroke();
+    ctx.restore();
+
+    // On-Demand Best Drop Hint
+    if (!gameOver && hintEnabled && hintCharges > 0) {
+      const hint = computeBestDrop();
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = hint.isMatch ? "#10b981" : "#f59e0b";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(hint.x, hint.y, tiers[currentTier].r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = hint.isMatch ? "#10b981" : "#f59e0b";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`★ BEST (${hintCharges})`, hint.x, 32);
+      ctx.restore();
+    }
+
+    // Aiming Guide & Held Snack
+    if (!gameOver) {
+      const cur = tiers[currentTier];
+      const clampedX = Math.min(WALL_R - cur.r - 2, Math.max(WALL_L + cur.r + 2, aimX));
+      ctx.save();
+      ctx.setLineDash([3, 5]);
+      ctx.strokeStyle = "rgba(180,83,9,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(clampedX, DANGER_Y - 12);
+      ctx.lineTo(clampedX, FLOOR);
+      ctx.stroke();
+      ctx.restore();
+      drawTreat(clampedX, DANGER_Y - 24, cur.r, cur);
+    }
+
+    // Active Snacks
+    for (const b of bodies) {
+      drawTreat(b.x, b.y, b.r, tiers[b.tier]);
+    }
+
+    // Particles
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawTreat(x, y, r, tier) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = tier.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.stroke();
+
+    ctx.font = `${Math.floor(r * 1.18)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tier.icon, x, y + 1);
+    ctx.restore();
+  }
+
+  // Input Handling
+  function pointerX(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return ((clientX - rect.left) / rect.width) * W;
+  }
+  canvas.addEventListener("mousemove", e => { aimX = pointerX(e); });
+  canvas.addEventListener("click", e => { aimX = pointerX(e); dropSnack(); });
+  canvas.addEventListener("touchmove", e => { e.preventDefault(); aimX = pointerX(e); }, { passive: false });
+  canvas.addEventListener("touchend", e => { e.preventDefault(); dropSnack(); }, { passive: false });
+
+  // 2P Sync (BroadcastChannel + Optional WebSocket)
+  const urlParams = new URLSearchParams(location.search);
+  let roomCode = (urlParams.get("room") || Math.random().toString(36).substring(2, 6)).toUpperCase();
+  let wsBase = urlParams.get("ws") || store.get("wsUrl", "");
+  let bc = null, ws = null;
+
+  function connectRoom() {
+    if (bc) bc.close();
+    try {
+      bc = new BroadcastChannel("cc_room_" + roomCode);
+      bc.onmessage = ev => handlePeerMsg(ev.data);
+    } catch {}
+
+    if (ws) { try { ws.close(); } catch {} ws = null; }
+    if (wsBase) {
+      try {
+        const clean = wsBase.replace(/\/$/, "");
+        ws = new WebSocket(`${clean}/${roomCode}`);
+        ws.onopen = () => {
+          document.getElementById("roomStatus").textContent = `Connected to Room ${roomCode}`;
+          broadcast2P({ type: "score", score });
+        };
+        ws.onmessage = ev => { try { handlePeerMsg(JSON.parse(ev.data)); } catch {} };
+      } catch {}
+    }
+  }
+
+  function broadcast2P(payload) {
+    if (bc) { try { bc.postMessage(payload); } catch {} }
+    if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(payload)); } catch {} }
+  }
+
+  function handlePeerMsg(data) {
+    if (!data) return;
+    const badge = document.getElementById("peerBadge");
+    badge.style.display = "block";
+    if (typeof data.score === "number") badge.textContent = `2P: ${data.score.toLocaleString()}`;
+    if (data.type === "chakkar") {
+      tiltAngle = (Math.random() < 0.5 ? -1 : 1) * 0.16;
+      tiltTimer = 1.6;
+      showToast("⚔️ Rival Sent Chakkar Tilt!");
+    }
+  }
+
+  // Shareable PNG Score Card
+  function downloadScoreCard() {
+    const c = document.createElement("canvas");
+    c.width = 600; c.height = 340;
+    const g = c.getContext("2d");
+    g.fillStyle = "#2b190e";
+    g.fillRect(0, 0, 600, 340);
+    g.strokeStyle = "#f59e0b";
+    g.lineWidth = 8;
+    g.strokeRect(14, 14, 572, 312);
+
+    g.fillStyle = "#fbbf24";
+    g.font = "bold 32px sans-serif";
+    g.fillText("☕ Chai & Chakkar", 38, 68);
+
+    g.fillStyle = "#fffaf0";
+    g.font = "bold 46px sans-serif";
+    g.fillText(`${score.toLocaleString()} pts`, 38, 145);
+
+    g.fillStyle = "#fcd34d";
+    g.font = "bold 22px sans-serif";
+    g.fillText(`⭐ Level ${level}   •   ${isDaily ? "📅 Daily Seed" : "♾️ Endless"}`, 38, 195);
+
+    g.fillStyle = "#e7e5e4";
+    g.font = "20px sans-serif";
+    g.fillText(`Top Treat: ${getHighestIcon()}`, 38, 240);
+    g.fillStyle = "#a8a29e";
+    g.font = "15px sans-serif";
+    g.fillText(new Date().toDateString(), 38, 292);
+
+    const a = document.createElement("a");
+    a.download = `chai-chakkar-lv${level}-${score}.png`;
+    a.href = c.toDataURL("image/png");
+    a.click();
+  }
+
+  // Menu UI Wiring
+  const backdrop = document.getElementById("modalBackdrop");
+  document.getElementById("menuBtn").onclick = () => { renderMenuState(); backdrop.style.display = "flex"; };
+  document.getElementById("closeMenuBtn").onclick = () => { backdrop.style.display = "none"; };
+  backdrop.onclick = e => { if (e.target === backdrop) backdrop.style.display = "none"; };
+
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tabBody").forEach(b => b.classList.add("hidden"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.remove("hidden");
+    };
+  });
+
+  document.getElementById("modeEndlessBtn").onclick = () => { isDaily = false; resetGame(1); backdrop.style.display = "none"; };
+  document.getElementById("modeDailyBtn").onclick = () => { isDaily = true; resetGame(1); backdrop.style.display = "none"; };
+  document.getElementById("newGameBtn").onclick = () => {
+    const lv = parseInt(document.getElementById("startLvSelect").value || "1", 10);
+    resetGame(lv); backdrop.style.display = "none";
+  };
+  document.getElementById("restartBtn").onclick = () => resetGame(1);
+  document.getElementById("overShareBtn").onclick = downloadScoreCard;
+  document.getElementById("downloadCardBtn").onclick = downloadScoreCard;
+
+  document.getElementById("hintToggleBtn").onclick = () => {
+    if (hintCharges <= 0) return;
+    hintEnabled = !hintEnabled;
+    updateHUD();
+  };
+
+  document.getElementById("soundBtn").onclick = () => {
+    soundOn = !soundOn; store.set("sound", soundOn); renderMenuState();
+  };
+  document.getElementById("themeBtn").onclick = () => {
+    nightMode = !nightMode; store.set("night", nightMode);
+    document.body.classList.toggle("night", nightMode);
+    renderMenuState();
+  };
+
+  document.getElementById("roomCodeInput").value = roomCode;
+  document.getElementById("wsUrlInput").value = wsBase;
+  document.getElementById("copyRoomBtn").onclick = () => {
+    roomCode = (document.getElementById("roomCodeInput").value || "CHAI").toUpperCase();
+    wsBase = document.getElementById("wsUrlInput").value.trim();
+    store.set("wsUrl", wsBase);
+    connectRoom();
+    const u = new URL(location.href);
+    u.searchParams.set("room", roomCode);
+    if (wsBase) u.searchParams.set("ws", wsBase); else u.searchParams.delete("ws");
+    navigator.clipboard?.writeText(u.toString());
+    showToast(`🔗 Copied Room ${roomCode} Link!`);
+  };
+
+  function renderMenuState() {
+    document.getElementById("modeEndlessBtn").className = isDaily ? "btn sec" : "btn";
+    document.getElementById("modeDailyBtn").className = isDaily ? "btn" : "btn sec";
+    document.getElementById("soundBtn").textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+    document.getElementById("themeBtn").textContent = nightMode ? "🌙 Night" : "☀️ Day";
+
+    const sel = document.getElementById("startLvSelect");
+    sel.innerHTML = "";
+    for (let l = 1; l <= maxLevelUnlocked; l++) {
+      const opt = document.createElement("option");
+      opt.value = l; opt.textContent = `Level ${l}`;
+      if (l === level) opt.selected = true;
+      sel.appendChild(opt);
+    }
+
+    // Packs Grid
+    const pg = document.getElementById("packGrid");
+    pg.innerHTML = "";
+    const entries = Object.entries(PACKS);
+    if (customIcons.length === 14) entries.push(["custom", { name: "🎨 My Custom 14" }]);
+    for (const [key, pack] of entries) {
+      const b = document.createElement("button");
+      b.className = "packBtn" + (activePackKey === key ? " active" : "");
+      b.textContent = pack.name;
+      b.onclick = () => {
+        activePackKey = key; store.set("packKey", key);
+        resetGame(1); renderMenuState();
+      };
+      pg.appendChild(b);
+    }
+
+    // Sticker Collection Shelf
+    const sg = document.getElementById("shelfGrid");
+    sg.innerHTML = "";
+    getActiveTiers().forEach((t, idx) => {
+      const unlocked = !!unlockedMap[activePackKey + "_" + idx];
+      const cell = document.createElement("div");
+      cell.className = "shelfCell" + (unlocked ? "" : " locked");
+      cell.title = t.label;
+      cell.innerHTML = `${unlocked ? '<span class="crown">👑</span>' : ""}${t.icon}`;
+      sg.appendChild(cell);
+    });
+
+    // Custom 14-Item Builder Pool
+    const bp = document.getElementById("builderPool");
+    bp.innerHTML = "";
+    MASTER_POOL.forEach(item => {
+      const pickedIdx = customIcons.findIndex(x => x.icon === item.icon);
+      const chip = document.createElement("button");
+      chip.className = "poolChip" + (pickedIdx >= 0 ? " picked" : "");
+      chip.textContent = `${item.icon} ${item.label}`;
+      chip.onclick = () => {
+        if (pickedIdx >= 0) customIcons.splice(pickedIdx, 1);
+        else if (customIcons.length < 14) customIcons.push(item);
+        store.set("customIcons", customIcons);
+        renderMenuState();
+      };
+      bp.appendChild(chip);
+    });
+    document.getElementById("builderCount").textContent = `${customIcons.length} / 14`;
+    document.getElementById("builderSaveBtn").disabled = customIcons.length !== 14;
+
+    // Leaderboard
+    const rb = document.getElementById("ranksBody");
+    rb.innerHTML = leaderboard.length
+      ? leaderboard.map((r, i) => `<tr><td>${i + 1}</td><td>${r.mode}</td><td>Lv ${r.level}</td><td>${r.score.toLocaleString()}</td><td>${r.top}</td></tr>`).join("")
+      : `<tr><td colspan="5" style="text-align:center;color:var(--muted);">No scores recorded yet</td></tr>`;
+  }
+
+  document.getElementById("builderClearBtn").onclick = () => {
+    customIcons = []; store.set("customIcons", []); renderMenuState();
+  };
+  document.getElementById("builderSaveBtn").onclick = () => {
+    if (customIcons.length === 14) {
+      activePackKey = "custom"; store.set("packKey", "custom");
+      resetGame(1); backdrop.style.display = "none";
+      showToast("🎨 Custom 14-Item Pack Active!");
+    }
+  };
+
+  // Main Loop
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    step(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  connectRoom();
+  resetGame(1);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
