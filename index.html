@@ -189,6 +189,21 @@
       display: inline-block;
       animation: peerPulse 1.5s infinite ease-in-out;
     }
+    #comboPill {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #ec4899, #f59e0b);
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+      box-shadow: 0 2px 10px rgba(236, 72, 153, 0.45);
+      pointer-events: none;
+      transition: transform 0.08s linear;
+    }
   </style>
   <meta name="description" content="Drop and merge 14 Indian treats inside a tilting brass dabba! Instant mobile and desktop play, daily seeds, and live 2-player duels." />
   <meta property="og:type" content="website" />
@@ -216,7 +231,7 @@
       <div class="pill" id="chakkarPill">🔔 12</div>
       <div class="pill" id="nextPill">Next: <canvas id="nextMini" width="20" height="20"></canvas></div>
     </div>
-    <button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
+    <span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
   </div>
   <div id="lvBarWrap"><div id="lvBar"></div></div>
 
@@ -658,7 +673,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0;
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -824,6 +839,19 @@
   }
 
   function step(dt) {
+    const comboPillEl = document.getElementById("comboPill");
+    if (comboPillEl) {
+      const elapsed = performance.now() - lastMergeAt;
+      if (chainCount >= 2 && elapsed <= 1400 && !gameOver) {
+        const rem = Math.max(0, 1 - elapsed / 1400);
+        comboPillEl.style.display = "inline-flex";
+        comboPillEl.textContent = `🔥 x${chainCount}`;
+        comboPillEl.style.opacity = (0.35 + 0.65 * rem).toFixed(2);
+        comboPillEl.style.transform = `scale(${(0.92 + 0.14 * rem).toFixed(3)})`;
+      } else {
+        comboPillEl.style.display = "none";
+      }
+    }
     if (!gameOver && (keysDown.left || keysDown.right)) {
       const aimSpeed = 320;
       if (keysDown.left) aimX -= aimSpeed * dt;
@@ -1489,6 +1517,7 @@
 </script>
 </body>
 </html>
+
 
 
 
