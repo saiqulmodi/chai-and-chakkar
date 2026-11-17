@@ -965,7 +965,52 @@
     return tiers[maxT].label;
   }
 
+    function getTopScores() {
+    try {
+      const raw = localStorage.getItem("chai_chakkar_top5");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  }
+
+  function recordTopScore(pts, lvl, highest) {
+    if (!pts || pts <= 0) return;
+    const list = getTopScores();
+    const today = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    list.push({ score: pts, level: lvl, highest: highest || "", date: today });
+    list.sort((a, b) => b.score - a.score);
+    const trimmed = list.slice(0, 5);
+    try { localStorage.setItem("chai_chakkar_top5", JSON.stringify(trimmed)); } catch {}
+    renderTopScores();
+  }
+
+  function renderTopScores() {
+    const el = document.getElementById("topScoresList");
+    if (!el) return;
+    const list = getTopScores();
+    if (!list.length) {
+      el.innerHTML = `<div style="color:#9ca3af;font-style:italic;">No runs recorded yet — drop some treats!</div>`;
+      return;
+    }
+    const medals = ["🥇", "🥈", "🥉", "4.", "5."];
+    el.innerHTML = list.map((item, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 6px;border-radius:6px;background:rgba(255,255,255,0.04);">
+        <span><strong>${medals[i]}</strong> ${Number(item.score).toLocaleString()} pts <span style="color:#a7f3d0;">(Lv ${item.level})</span></span>
+        <span style="color:#fde68a;font-size:11px;">${item.highest || ""} • ${item.date || ""}</span>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("clearScoresBtn")?.addEventListener("click", () => {
+    if (confirm("Clear your saved Top 5 high scores?")) {
+      try { localStorage.removeItem("chai_chakkar_top5"); } catch {}
+      renderTopScores();
+      showToast("🧹 High scores cleared");
+    }
+  });
+
   function saveScoreRecord() {
+    recordTopScore(score, level, getHighestLabel());
     leaderboard.push({
       mode: isDaily ? "Daily" : "Endless",
       level,
@@ -1192,7 +1237,8 @@
       if (won) { spawnConfetti(); playLevelFanfare(); }
     } else if (data.type === "rematch") {
       peerScore = 0; peerLevel = 1; renderPeerBadge();
-      resetGame(1);
+      renderTopScores();
+  resetGame(1);
       showToast("🔄 2P Rematch Started!");
     }
   }
@@ -1246,8 +1292,10 @@
     };
   });
 
-  document.getElementById("modeEndlessBtn").onclick = () => { isDaily = false; resetGame(1); backdrop.style.display = "none"; };
-  document.getElementById("modeDailyBtn").onclick = () => { isDaily = true; resetGame(1); backdrop.style.display = "none"; };
+  document.getElementById("modeEndlessBtn").onclick = () => { isDaily = false; renderTopScores();
+  resetGame(1); backdrop.style.display = "none"; };
+  document.getElementById("modeDailyBtn").onclick = () => { isDaily = true; renderTopScores();
+  resetGame(1); backdrop.style.display = "none"; };
   document.getElementById("newGameBtn").onclick = () => {
     const lv = parseInt(document.getElementById("startLvSelect").value || "1", 10);
     resetGame(lv); backdrop.style.display = "none";
@@ -1274,7 +1322,8 @@
       peerScore = 0; peerLevel = 1; renderPeerBadge();
       broadcast2P({ type: "rematch", score: 0 });
     }
-    resetGame(1);
+    renderTopScores();
+  resetGame(1);
   };
   document.getElementById("overShareBtn").onclick = downloadScoreCard;
   document.getElementById("downloadCardBtn").onclick = downloadScoreCard;
@@ -1352,7 +1401,8 @@
       b.textContent = pack.name;
       b.onclick = () => {
         activePackKey = key; store.set("packKey", key);
-        resetGame(1); renderMenuState();
+        renderTopScores();
+  resetGame(1); renderMenuState();
       };
       pg.appendChild(b);
     }
@@ -1404,7 +1454,8 @@
   document.getElementById("builderSaveBtn").onclick = () => {
     if (customIcons.length === 14) {
       activePackKey = "custom"; store.set("packKey", "custom");
-      resetGame(1); backdrop.style.display = "none";
+      renderTopScores();
+  resetGame(1); backdrop.style.display = "none";
       showToast("🎨 Custom 14-Item Pack Active!");
     }
   };
@@ -1419,12 +1470,14 @@
   }
 
   connectRoom();
+  renderTopScores();
   resetGame(1);
   requestAnimationFrame(loop);
 })();
 </script>
 </body>
 </html>
+
 
 
 
