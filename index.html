@@ -316,6 +316,7 @@
         <button class="tab" data-tab="tabItems">14 Items</button>
         <button class="tab" data-tab="tab2P">2P &amp; Card</button>
         <button class="tab" data-tab="tabRanks">Ranks</button>
+        <button class="tab" data-tab="tabTwists">🌀 Twists</button>
       </div>
 
       <div class="tabBody" id="tabPlay">
@@ -393,6 +394,13 @@
           <thead><tr><th>#</th><th>Mode</th><th>Level</th><th>Score</th><th>Top Treat</th></tr></thead>
           <tbody id="ranksBody"></tbody>
         </table>
+      </div>
+
+      <div class="tabBody hidden" id="tabTwists">
+        <div style="font-weight:800;margin-bottom:6px;">📋 Right Now</div>
+        <div id="twistStatus" style="font-size:0.78rem;line-height:1.55;margin-bottom:12px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);"></div>
+        <div style="font-weight:800;margin-bottom:6px;">🌀 Twists (tap to switch ON / OFF)</div>
+        <div id="twistList"></div>
       </div>
     </div>
   </div>
@@ -742,7 +750,8 @@
   const ctx = canvas.getContext("2d");
   const nextMini = document.getElementById("nextMini").getContext("2d");
   const W = 400, H = 600;
-  const WALL_L = 22, WALL_R = W - 22, FLOOR = H - 22, DANGER_Y = 105;
+  const FLOOR = H - 22, DANGER_Y = 105;
+  let WALL_L = 22, WALL_R = W - 22; // move inward on Tiffin Boss levels
 
   let bodies = [], particles = [], popups = [], confetti = []; let chainCount = 0, lastMergeAt = 0, shakeTime = 0, shakeMax = 0, shakeMag = 0;
   function triggerShake(mag = 6, dur = 0.28) {
@@ -787,12 +796,208 @@
   }
   function levelThreshold(lv) { return Math.floor(450 * Math.pow(lv, 1.38)); }
 
+  // ---------- Twists (switched ON / OFF in Menu > Twists) ----------
+  const TWISTS = [
+    { key: "masala",   name: "🌶️ Masala Rain",       desc: "Sometimes spice rains down: for 3 seconds snacks one size apart also merge." },
+    { key: "customer", name: "🧑 Hungry Customer",    desc: "A customer asks for one snack. Make it within 10 drops for a tip; miss and they leave grumpy (−points)." },
+    { key: "tawa",     name: "🔥 Hot Tawa",           desc: "One side of the dabba gets hot for 5 drops and pushes snacks away from it." },
+    { key: "arrow",    name: "🧭 Tilt Warning",       desc: "Tells you which way the next Chakkar tilt will go (here and in a note one drop before)." },
+    { key: "spill",    name: "🫗 Spilled Chai",       desc: "Rarely the chai spills: the floor is slippery for 5 drops." },
+    { key: "boss",     name: "👹 Tiffin Boss",        desc: "Every 5th level the dabba gets narrower for that level only." },
+    { key: "recipe",   name: "🍽️ Daily Recipe",       desc: "Each day: have 3 given snacks in the dabba at the same time for +1,000 and a recipe streak." },
+    { key: "mystery",  name: "🎁 Mystery Box",        desc: "Some drops come as a box: you see the snack only when it lands." }
+  ];
+  let twistOn = Object.assign({}, ...TWISTS.map(t => ({ [t.key]: true })), store.get("twists", {}));
+  const TW = k => !!twistOn[k];
+  function freshTw() {
+    return { masalaT: 0, order: null, hot: null, slip: 0, tiltDir: Math.random() < 0.5 ? -1 : 1, curMys: false, nextMys: false, inset: 0 };
+  }
+  let tw = freshTw();
+  let recipeCheckT = 0;
+
+  function bossLevel() { return TW("boss") && level % 5 === 0; }
+  function onLevelChange() {
+    if (bossLevel()) showToast("👹 Tiffin Boss Level! The dabba is narrower");
+  }
+  function tierName(t) { const ti = getActiveTiers()[t]; return ti ? ti.icon + " " + ti.label : "?"; }
+
+  // Daily Recipe: same 3 snacks for everyone each day (tiers 4..9)
+  function recipeTiers() {
+    const d = new Date();
+    let s = (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()) * 7919 % 2147483647;
+    const out = [];
+    while (out.length < 3) {
+      s = (s * 48271) % 2147483647;
+      const t = 4 + (s % 6);
+      if (!out.includes(t)) out.push(t);
+    }
+    return out.sort((a, b) => a - b);
+  }
+  function recipeData() {
+    const r = store.get("recipe", { doneDate: "", streak: 0 });
+    return { doneDate: r.doneDate || "", streak: Number(r.streak) || 0 };
+  }
+  function checkRecipe() {
+    if (!TW("recipe") || gameOver) return;
+    const today = localDayKey(0);
+    const r = recipeData();
+    if (r.doneDate === today) return;
+    const need = recipeTiers();
+    if (!need.every(t => bodies.some(b => b.tier === t && !b.merged))) return;
+    r.streak = r.doneDate === localDayKey(-1) ? r.streak + 1 : 1;
+    r.doneDate = today;
+    store.set("recipe", r);
+    score += 1000;
+    showToast(`🍽️ Daily Recipe done! +1,000 • 🔥 ${r.streak} day${r.streak === 1 ? "" : "s"}`);
+    spawnConfetti(); playLevelFanfare(); buzz([30, 30, 50]);
+    checkProgression(); updateHUD();
+  }
+
+  // Called whenever a merge makes a new snack of tier nt
+  function onSnackMade(nt, x, y) {
+    if (tw.order && TW("customer") && nt === tw.order.tier) {
+      const tip = Math.pow(2, nt) * 10 * 2;
+      score += tip;
+      spawnPopup(x, y - 30, `😋 Tip +${tip.toLocaleString()}`, "#10b981", true);
+      showToast(`😋 Customer happy! Tip +${tip.toLocaleString()}`);
+      tw.order = null;
+    }
+  }
+
+  // Twist events, rolled once per drop
+  function twistsOnDrop() {
+    const rnd = seededRand;
+    if (tw.hot) { tw.hot.left--; if (tw.hot.left <= 0) { tw.hot = null; showToast("🔥 The tawa cooled down"); } }
+    if (tw.slip > 0) { tw.slip--; if (tw.slip === 0) showToast("🧽 Floor is dry again"); }
+    if (tw.order) {
+      tw.order.left--;
+      if (tw.order.left === 3) showToast(`🧑 3 drops left for ${tierName(tw.order.tier)}`);
+      if (tw.order.left <= 0) {
+        const pen = Math.min(score, Math.pow(2, tw.order.tier) * 5);
+        score -= pen;
+        showToast(`😠 Customer left grumpy −${pen.toLocaleString()}`);
+        tone(160, 0.25, "sawtooth", 0.08); buzz([40, 30, 40]);
+        tw.order = null;
+      }
+    }
+    if (dropsUntilChakkar === 1 && TW("arrow")) showToast(`🔔 Tilt next drop ${tw.tiltDir < 0 ? "⬅️ LEFT" : "RIGHT ➡️"}`);
+
+    // at most one new event per drop
+    const roll = rnd();
+    if (TW("customer") && !tw.order && dropCount >= 4 && roll < 0.09) {
+      let maxT = 0;
+      for (const b of bodies) if (b.tier > maxT) maxT = b.tier;
+      const t = Math.max(3, Math.min(10, maxT + 1 + Math.floor(rnd() * 2)));
+      tw.order = { tier: t, left: 10 };
+      showToast(`🧑 Customer wants ${tierName(t)} in 10 drops!`);
+      tone(620, 0.08, "triangle", 0.1); tone(780, 0.1, "triangle", 0.1, 0.09);
+    } else if (TW("masala") && tw.masalaT <= 0 && roll >= 0.09 && roll < 0.14) {
+      tw.masalaT = 3;
+      showToast("🌶️ Masala Rain! Near-twins merge for 3 s");
+      tone(880, 0.06, "square", 0.06); tone(990, 0.06, "square", 0.06, 0.07);
+    } else if (TW("tawa") && !tw.hot && roll >= 0.14 && roll < 0.18) {
+      tw.hot = { side: rnd() < 0.5 ? -1 : 1, left: 5 };
+      showToast(`🔥 Hot Tawa on the ${tw.hot.side < 0 ? "left" : "right"} side!`);
+    } else if (TW("spill") && tw.slip <= 0 && roll >= 0.18 && roll < 0.205) {
+      tw.slip = 5;
+      showToast("🫗 Chai spilled! Slippery floor for 5 drops");
+      tone(300, 0.2, "sine", 0.08);
+    }
+  }
+  function masalaPair(a, b) {
+    return TW("masala") && tw.masalaT > 0 && a.tier >= 0 && b.tier >= 0 &&
+      Math.abs(a.tier - b.tier) === 1 && Math.max(a.tier, b.tier) < 13;
+  }
+  function drawMysteryBox(c, x, y, r) {
+    c.save();
+    c.translate(x, y);
+    const s = r * 1.55;
+    c.fillStyle = "#7c3aed";
+    c.beginPath(); c.roundRect(-s / 2, -s / 2, s, s, s * 0.16); c.fill();
+    c.fillStyle = "#fbbf24";
+    c.fillRect(-s * 0.09, -s / 2, s * 0.18, s);
+    c.fillRect(-s / 2, -s * 0.09, s, s * 0.18);
+    c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 2;
+    c.beginPath(); c.roundRect(-s / 2, -s / 2, s, s, s * 0.16); c.stroke();
+    c.fillStyle = "#fff"; c.font = `900 ${Math.max(9, r * 0.9)}px sans-serif`;
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("?", 0, 1);
+    c.restore();
+  }
+  function renderTwistsMenu() {
+    const st = document.getElementById("twistStatus");
+    const list = document.getElementById("twistList");
+    if (!st || !list) return;
+    const lines = [];
+    if (TW("customer")) lines.push(tw.order ? `🧑 Customer wants <b>${tierName(tw.order.tier)}</b> — ${tw.order.left} drop${tw.order.left === 1 ? "" : "s"} left` : "🧑 No customer waiting");
+    if (TW("arrow")) lines.push(`🧭 Next tilt: <b>${tw.tiltDir < 0 ? "⬅️ left" : "right ➡️"}</b> in ${dropsUntilChakkar} drop${dropsUntilChakkar === 1 ? "" : "s"}`);
+    if (TW("tawa")) lines.push(tw.hot ? `🔥 Hot Tawa: <b>${tw.hot.side < 0 ? "left" : "right"}</b> side, ${tw.hot.left} drops` : "🔥 Tawa is cool");
+    if (TW("spill")) lines.push(tw.slip > 0 ? `🫗 Slippery floor: ${tw.slip} drops` : "🫗 Floor is dry");
+    if (TW("masala")) lines.push(tw.masalaT > 0 ? "🌶️ Masala Rain is falling!" : "🌶️ No masala right now");
+    if (TW("boss")) lines.push(bossLevel() ? "👹 <b>Boss level now</b> — narrow dabba" : `👹 Next boss: Level ${Math.ceil((level + 1) / 5) * 5}`);
+    if (TW("mystery")) lines.push(tw.curMys || tw.nextMys ? "🎁 A mystery box is coming" : "🎁 No mystery box right now");
+    if (TW("recipe")) {
+      const r = recipeData();
+      const done = r.doneDate === localDayKey(0);
+      const items = recipeTiers().map(t => (bodies.some(b => b.tier === t) || done ? "✅ " : "⬜ ") + tierName(t)).join(" &nbsp; ");
+      const streak = r.doneDate === localDayKey(0) || r.doneDate === localDayKey(-1) ? r.streak : 0;
+      lines.push(`🍽️ Today's recipe${done ? " (done!)" : ""}: ${items} &nbsp; • streak 🔥 ${streak}`);
+    }
+    st.innerHTML = lines.length ? lines.join("<br>") : "All twists are OFF.";
+    list.innerHTML = "";
+    for (const t of TWISTS) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.alignItems = "flex-start";
+      const txt = document.createElement("div");
+      txt.innerHTML = `<b>${t.name}</b><div style="font-size:0.72rem;color:var(--muted);">${t.desc}</div>`;
+      const b = document.createElement("button");
+      b.className = TW(t.key) ? "btn" : "btn sec";
+      b.style.minWidth = "58px";
+      b.textContent = TW(t.key) ? "ON" : "OFF";
+      b.onclick = () => {
+        twistOn[t.key] = !TW(t.key);
+        store.set("twists", twistOn);
+        if (!TW(t.key)) {
+          if (t.key === "customer") tw.order = null;
+          if (t.key === "tawa") tw.hot = null;
+          if (t.key === "spill") tw.slip = 0;
+          if (t.key === "masala") tw.masalaT = 0;
+          if (t.key === "mystery") { tw.curMys = tw.nextMys = false; bodies.forEach(o => o.mystery = false); }
+        }
+        updateHUD();
+        renderTwistsMenu();
+      };
+      row.appendChild(txt); row.appendChild(b);
+      list.appendChild(row);
+    }
+  }
+
+  // Toasts queue up so two notes on the same drop are both seen
+  let toastQueue = [], toastBusyUntil = 0;
   function showToast(msg) {
+    const now = performance.now();
     const el = document.getElementById("toast");
+    if (now < toastBusyUntil) {
+      if (msg.startsWith("⭐ Level")) toastQueue = toastQueue.filter(q => !q.msg.startsWith("⭐ Level"));
+      if (toastQueue.length < 4 && !toastQueue.some(q => q.msg === msg)) toastQueue.push({ msg, at: now });
+      if (!el._q) el._q = setTimeout(nextToast, toastBusyUntil - now);
+      return;
+    }
     el.textContent = msg;
     el.style.opacity = "1";
+    toastBusyUntil = now + 1300;
     clearTimeout(el._t);
     el._t = setTimeout(() => { el.style.opacity = "0"; }, 2200);
+  }
+  function nextToast() {
+    const el = document.getElementById("toast");
+    el._q = null;
+    toastBusyUntil = 0;
+    const now = performance.now();
+    toastQueue = toastQueue.filter(q => now - q.at < 2500); // drop notes that are no longer current
+    if (toastQueue.length) showToast(toastQueue.shift().msg);
+    if (toastQueue.length) el._q = setTimeout(nextToast, 1300);
   }
 
   function unlockTier(idx) {
@@ -807,6 +1012,7 @@
     bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; beatRecordThisRun = false; syncBestHudPill(false); dropCount = 0; maxComboRun = 1; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
+    tw = freshTw();
     dropsUntilChakkar = 12;
     tiltAngle = 0; tiltTimer = 0;
     overflowTimer = 0; gameOver = false;
@@ -826,6 +1032,7 @@
     ov.firstElementChild.textContent = "Dabba Full!";
     ov.style.display = "none";
     updateHUD();
+    if (bossLevel()) onLevelChange();
     runStart();
   }
 
@@ -843,13 +1050,17 @@
     }
 
     nextMini.clearRect(0, 0, 20, 20);
-    nextMini.save();
-    nextMini.translate(10, 10);
-    const nextInfo = tierInfo(nextTier);
-    nextMini.fillStyle = nextInfo.color;
-    nextMini.beginPath(); nextMini.arc(0, 0, 9, 0, Math.PI * 2); nextMini.fill();
-    drawVectorArt(nextMini, nextInfo.art, 9);
-    nextMini.restore();
+    if (tw.nextMys && TW("mystery")) {
+      drawMysteryBox(nextMini, 10, 10, 6.2);
+    } else {
+      nextMini.save();
+      nextMini.translate(10, 10);
+      const nextInfo = tierInfo(nextTier);
+      nextMini.fillStyle = nextInfo.color;
+      nextMini.beginPath(); nextMini.arc(0, 0, 9, 0, Math.PI * 2); nextMini.fill();
+      drawVectorArt(nextMini, nextInfo.art, 9);
+      nextMini.restore();
+    }
 
     const prevT = level > 1 ? levelThreshold(level - 1) : 0;
     const nextT = levelThreshold(level);
@@ -888,6 +1099,7 @@
       playLevelFanfare();
       spawnConfetti();
       showToast(`⭐ Level ${level} Reached!`);
+      if (bossLevel()) setTimeout(onLevelChange, 1600);
     }
   }
 
@@ -936,7 +1148,7 @@
     if (gameOver || dropCooldown > 0) return;
     const r = tierInfo(currentTier).r;
     const x = Math.min(WALL_R - r - 2, Math.max(WALL_L + r + 2, aimX));
-    bodies.push({ x, y: DANGER_Y - 12, vx: 0, vy: 40, tier: currentTier, r, age: 0, merged: false });
+    bodies.push({ x, y: DANGER_Y - 12, vx: 0, vy: 40, tier: currentTier, r, age: 0, merged: false, mystery: tw.curMys && TW("mystery") });
     if (currentTier >= 0) unlockTier(currentTier);
     dropCount++;
     tone(190, 0.07, "sine", 0.1); buzz(12);
@@ -950,7 +1162,8 @@
     dropsUntilChakkar--;
     if (dropsUntilChakkar <= 0) {
       dropsUntilChakkar = 12;
-      const dir = Math.random() < 0.5 ? -1 : 1;
+      const dir = tw.tiltDir;
+      tw.tiltDir = Math.random() < 0.5 ? -1 : 1; // decided one round ahead (Tilt Warning)
       tiltAngle = dir * Math.min(0.24, 0.14 + level * 0.008);
       tiltTimer = 2.4;
       playChakkarBell();
@@ -961,7 +1174,10 @@
     currentTier = nextTier;
     // Every 12th drop (dropCount % 12 === 0) is the Cutting Chai wildcard
     nextTier = ((dropCount + 2) % 12 === 0) ? -1 : pickSpawnTier(); pulseNextPreview();
+    tw.curMys = tw.nextMys;
+    tw.nextMys = TW("mystery") && nextTier >= 0 && seededRand() < 0.07;
     if (currentTier === -1) showToast("☕ Cutting Chai Wildcard READY!");
+    twistsOnDrop();
     updateHUD();
     saveRunState();
   }
@@ -1054,6 +1270,17 @@
       tiltTimer -= dt;
       if (tiltTimer <= 0) tiltAngle = 0;
     }
+    // Twists: masala timer, boss walls, spice falling
+    if (tw.masalaT > 0) {
+      tw.masalaT = Math.max(0, tw.masalaT - dt);
+      if (Math.random() < 0.6) particles.push({ x: WALL_L + Math.random() * (WALL_R - WALL_L), y: 14, vx: (Math.random() - 0.5) * 20, vy: 180 + Math.random() * 120, life: 1.6, color: Math.random() < 0.5 ? "#dc2626" : "#f59e0b" });
+    }
+    const insetTarget = bossLevel() ? 34 : 0;
+    if (tw.inset !== insetTarget) {
+      tw.inset = tw.inset < insetTarget ? Math.min(insetTarget, tw.inset + 30 * dt) : Math.max(insetTarget, tw.inset - 30 * dt);
+    }
+    WALL_L = 22 + tw.inset; WALL_R = W - 22 - tw.inset;
+    if (TW("recipe") && !gameOver) { recipeCheckT -= dt; if (recipeCheckT <= 0) { recipeCheckT = 0.5; checkRecipe(); } }
 
     const tiers = getActiveTiers();
     const g = 980;
@@ -1070,12 +1297,17 @@
         b.vy += gy * sdt;
         b.vx *= 0.995;
         b.vy *= 0.995;
+        if (tw.hot && TW("tawa") && b.y + b.r > FLOOR - 150) {
+          const third = (WALL_R - WALL_L) / 3;
+          const onHot = tw.hot.side < 0 ? b.x < WALL_L + third : b.x > WALL_R - third;
+          if (onHot) b.vx += -tw.hot.side * 420 * sdt; // pushed away from the hot side
+        }
         b.x += b.vx * sdt;
         b.y += b.vy * sdt;
 
         if (b.x - b.r < WALL_L) { b.x = WALL_L + b.r; b.vx = Math.abs(b.vx) * 0.22; }
         if (b.x + b.r > WALL_R) { b.x = WALL_R - b.r; b.vx = -Math.abs(b.vx) * 0.22; }
-        if (b.y + b.r > FLOOR)  { b.y = FLOOR - b.r;  b.vy = -Math.abs(b.vy) * 0.2; b.vx *= 0.92; }
+        if (b.y + b.r > FLOOR)  { b.y = FLOOR - b.r;  b.vy = -Math.abs(b.vy) * 0.2; b.vx *= (tw.slip > 0 && TW("spill")) ? 0.999 : 0.92; b.mystery = false; }
       }
 
       for (let i = 0; i < bodies.length; i++) {
@@ -1086,6 +1318,7 @@
           const dist = Math.hypot(dx, dy) || 0.001;
           const minDist = a.r + b.r;
           if (dist < minDist) {
+            a.mystery = false; b.mystery = false; // a mystery box opens when it lands on something
             if ((a.tier === -1) !== (b.tier === -1)) {
               // Cutting Chai wildcard touched a snack
               const w = a.tier === -1 ? a : b;
@@ -1106,6 +1339,7 @@
                 if (chainCount >= 2) spawnPopup(s.x, s.y - 24, `🔥 x${chainCount} COMBO!`, "#ec4899", true);
                 bodies.push({ x: s.x, y: s.y, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
+                onSnackMade(nt, s.x, s.y);
                 spawnParticles(s.x, s.y, "#fde68a", 18);
                 comboCount = (nowMs - lastMergeTime < 1400) ? comboCount + 1 : 1; lastMergeTime = nowMs; playTablaMerge(nt, comboCount);
                 buzz([15, 20, 25]);
@@ -1120,17 +1354,19 @@
               checkProgression();
               updateHUD();
               broadcast2P({ type: "score", score, level });
-            } else if (a.tier === b.tier && a.tier >= 0) {
+            } else if ((a.tier === b.tier && a.tier >= 0) || masalaPair(a, b)) {
               runChanged = true;
               a.merged = b.merged = true;
+              const baseT = Math.max(a.tier, b.tier);
               const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-              if (a.tier === 13) {
+              if (a.tier !== b.tier) spawnPopup(mx, my - 46, "🌶️ Masala merge!", "#dc2626", false);
+              if (baseT === 13) {
                 score += 50000; spawnPopup(mx, my, "+50,000!", "#fbbf24", true); spawnConfetti(); triggerShake(9, 0.45);
                 spawnParticles(mx, my, "#fbbf24", 32);
                 tone(980, 0.3, "triangle", 0.18);
                 showToast("👑 GRAND FEAST +50,000!"); buzz([60, 40, 80]);
               } else {
-                const nt = a.tier + 1;
+                const nt = baseT + 1;
                 const pts = Math.pow(2, nt) * 10;
                 const nowMs = performance.now();
           chainCount = (nowMs - lastMergeAt <= 1400) ? (chainCount + 1) : 1;
@@ -1148,6 +1384,7 @@
           }
                 bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
+                onSnackMade(nt, mx, my);
                 spawnParticles(mx, my, tiers[nt].color, 14);
                 comboCount = (nowMs - lastMergeTime < 1400) ? comboCount + 1 : 1; lastMergeTime = nowMs; playTablaMerge(nt, comboCount);
               }
@@ -1390,6 +1627,35 @@
     ctx.stroke();
     ctx.restore();
 
+    // Twists drawn inside the dabba
+    if (tw.inset > 0.5) { // Tiffin Boss: brass walls move in
+      ctx.save();
+      ctx.fillStyle = nightMode ? "rgba(140,98,57,0.85)" : "rgba(197,146,73,0.85)";
+      ctx.fillRect(13, 16, WALL_L - 16, FLOOR - 13);
+      ctx.fillRect(WALL_R + 3, 16, W - 16 - WALL_R, FLOOR - 13);
+      ctx.restore();
+    }
+    if (tw.hot && TW("tawa")) {
+      const third = (WALL_R - WALL_L) / 3;
+      const x0 = tw.hot.side < 0 ? WALL_L : WALL_R - third;
+      const flick = 0.22 + 0.08 * Math.sin(performance.now() / 120);
+      const hg = ctx.createLinearGradient(0, FLOOR, 0, FLOOR - 150);
+      hg.addColorStop(0, `rgba(239,68,68,${flick + 0.15})`);
+      hg.addColorStop(1, "rgba(245,158,11,0)");
+      ctx.fillStyle = hg;
+      ctx.fillRect(x0, FLOOR - 150, third, 150);
+      ctx.font = "18px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("🔥", x0 + third / 2, FLOOR - 6);
+    }
+    if (tw.slip > 0 && TW("spill")) {
+      ctx.save();
+      ctx.fillStyle = "rgba(146,64,14,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(W / 2, FLOOR - 2, (WALL_R - WALL_L) / 2 - 6, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     if (!gameOver && hintEnabled && hintCharges > 0) {
       const hint = computeBestDrop();
       ctx.save();
@@ -1417,11 +1683,16 @@
       ctx.lineTo(clampedX, FLOOR);
       ctx.stroke();
       ctx.restore();
-      drawTreat(clampedX, DANGER_Y - 24, cur.r, cur);
+      if (tw.curMys && TW("mystery") && currentTier >= 0) drawMysteryBox(ctx, clampedX, DANGER_Y - 24, cur.r);
+      else drawTreat(clampedX, DANGER_Y - 24, cur.r, cur);
     }
 
+    const masalaGlow = tw.masalaT > 0 && TW("masala");
     for (const b of bodies) {
+      if (b.mystery) { drawMysteryBox(ctx, b.x, b.y, b.r); continue; }
+      if (masalaGlow) { ctx.save(); ctx.shadowColor = "#dc2626"; ctx.shadowBlur = 12; }
       drawTreat(b.x, b.y, b.r, b.tier === -1 ? CHAI_WILDCARD : tiers[b.tier]);
+      if (masalaGlow) ctx.restore();
     }
 
     for (const p of particles) {
@@ -1817,6 +2088,7 @@
     rb.innerHTML = leaderboard.length
       ? leaderboard.map((r, i) => `<tr><td>${i + 1}</td><td>${r.mode}</td><td>Lv ${r.level}</td><td>${r.score.toLocaleString()}</td><td>${r.top}</td></tr>`).join("")
       : `<tr><td colspan="5" style="text-align:center;color:var(--muted);">No scores recorded yet</td></tr>`;
+    renderTwistsMenu();
   }
 
   document.getElementById("builderClearBtn").onclick = () => {
@@ -1846,7 +2118,8 @@
     store.set("savedRun", {
       score, level, dropCount, dropsUntilChakkar, maxComboRun,
       currentTier, nextTier, activePackKey,
-      bodies: bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, tier: b.tier, r: b.r, age: b.age }))
+      tw: { order: tw.order, hot: tw.hot, slip: tw.slip, tiltDir: tw.tiltDir, curMys: tw.curMys, nextMys: tw.nextMys },
+      bodies: bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, tier: b.tier, r: b.r, age: b.age, m: !!b.mystery }))
     });
   }
   function clearSavedRun() {
@@ -1871,11 +2144,19 @@
     nextTier = validTier(saved.nextTier) ? saved.nextTier : pickSpawnTier();
     bodies = saved.bodies
       .filter(b => validTier(b.tier) && isFinite(b.x) && isFinite(b.y))
-      .map(b => ({ x: b.x, y: b.y, vx: b.vx || 0, vy: b.vy || 0, tier: b.tier, r: tierInfo(b.tier).r, age: Math.max(1, b.age || 0), merged: false }));
+      .map(b => ({ x: b.x, y: b.y, vx: b.vx || 0, vy: b.vy || 0, tier: b.tier, r: tierInfo(b.tier).r, age: Math.max(1, b.age || 0), merged: false, mystery: !!b.m && b.tier >= 0 }));
+    const st = saved.tw || {};
+    tw.order = st.order && st.order.tier >= 0 && st.order.tier <= 13 && st.order.left > 0 ? { tier: st.order.tier, left: st.order.left } : null;
+    tw.hot = st.hot && (st.hot.side === -1 || st.hot.side === 1) && st.hot.left > 0 ? { side: st.hot.side, left: st.hot.left } : null;
+    tw.slip = Math.max(0, Number(st.slip) || 0);
+    tw.tiltDir = st.tiltDir === -1 ? -1 : (st.tiltDir === 1 ? 1 : tw.tiltDir);
+    tw.curMys = !!st.curMys && currentTier >= 0;
+    tw.nextMys = !!st.nextMys && nextTier >= 0;
     while (score >= nextHintThreshold) { hintCharges = 5; nextHintThreshold += 1000; }
     pulseNextPreview();
     updateHUD();
     showToast(`▶️ Resumed Run: ${score.toLocaleString()} pts`);
+    if (bossLevel()) onLevelChange();
     return true;
   }
 
