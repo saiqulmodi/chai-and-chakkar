@@ -37,7 +37,8 @@
   }
   #topbar {
     width: min(420px, 96vw);
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; row-gap: 4px;
     padding: 6px 4px; gap: 6px;
   }
   #title {
@@ -652,6 +653,21 @@
     }
     return PACKS[activePackKey]?.items || PACKS.veg.items;
   }
+  // Stratos analytics + coins (do nothing when the game is opened on its own)
+  function track(name, details) {
+    try { var S = window.Stratos || parent.Stratos; if (S) S.track(name, details); } catch (e) {}
+  }
+  function SC() { try { var S = window.Stratos || parent.Stratos; return S && S.coins ? S.coins : null; } catch (e) { return null; } }
+  let runStartedAt = 0;
+  function runStart() {
+    runStartedAt = Date.now();
+    track("level_start", { level: level, mode: isDaily ? "daily" : "endless" });
+  }
+  function runEnd() {
+    const seconds = runStartedAt ? Math.round((Date.now() - runStartedAt) / 1000) : 0;
+    runStartedAt = 0;
+    track("game_over", { seconds, score, level });
+  }
   function tierInfo(t) {
     return t === -1 ? CHAI_WILDCARD : getActiveTiers()[t];
   }
@@ -810,6 +826,7 @@
     ov.firstElementChild.textContent = "Dabba Full!";
     ov.style.display = "none";
     updateHUD();
+    runStart();
   }
 
   function updateHUD() {
@@ -843,6 +860,10 @@
     if (hintCharges > 0) {
       hintBtn.disabled = false;
       hintBtn.textContent = `🎯 Hint: ${hintEnabled ? "ON" : "OFF"} (${hintCharges} left)`;
+    } else if (SC() && SC().offer && !peerConnected) {
+      hintBtn.disabled = false;
+      hintEnabled = false;
+      hintBtn.textContent = `🎯 5 Hints (Stratos Coins) or ${nextHintThreshold.toLocaleString()} pts`;
     } else {
       hintBtn.disabled = true;
       hintEnabled = false;
@@ -863,6 +884,7 @@
         store.set("maxLv", maxLevelUnlocked);
       }
       bodies = bodies.filter(b => b.tier >= 2);
+      if (!peerConnected) track("level_complete", { level: level - 1, score });
       playLevelFanfare();
       spawnConfetti();
       showToast(`⭐ Level ${level} Reached!`);
@@ -1163,6 +1185,7 @@
       if (overflowTimer >= 3.0 && !gameOver) {
         gameOver = true;
         clearSavedRun();
+        runEnd();
         saveScoreRecord();
         const ov = document.getElementById("gameOverOverlay");
         if (peerConnected) {
@@ -1492,6 +1515,7 @@
   let wsBase = urlParams.get("ws") || store.get("wsUrl", DEFAULT_WS);
   let bc = null, ws = null;
 
+  let wsWanted = urlParams.has("room");
   function connectRoom() {
     if (bc) bc.close();
     try {
@@ -1500,7 +1524,7 @@
     } catch {}
 
     if (ws) { try { ws.close(); } catch {} ws = null; }
-    if (wsBase) {
+    if (wsBase && wsWanted) {
       try {
         const clean = wsBase.replace(/\/$/, "");
         ws = new WebSocket(`${clean}/${roomCode}`);
@@ -1544,6 +1568,7 @@
     } else if (data.type === "gameover" && !gameOver) {
       gameOver = true;
       clearSavedRun();
+      runEnd();
       saveScoreRecord();
       const won = score >= peerScore;
       const ov = document.getElementById("gameOverOverlay");
@@ -1642,13 +1667,34 @@
   document.getElementById("downloadCardBtn").onclick = downloadScoreCard;
 
   document.getElementById("hintToggleBtn").onclick = () => {
-    if (hintCharges <= 0) return;
+    if (hintCharges <= 0) {
+      // On Stratos: 5 drop hints for Stratos Coins (never in 2P play)
+      const c = SC();
+      if (!c || !c.offer || peerConnected || gameOver) return;
+      track("reward_offered", { item: "hint" });
+      c.offer("hint", () => {
+        hintCharges = 5; hintEnabled = true;
+        track("reward_taken", { item: "hint" });
+        showToast("🎯 5 Drop Hints ON!");
+        updateHUD();
+      });
+      return;
+    }
     hintEnabled = !hintEnabled;
     updateHUD();
   };
 
+  function syncMuteBtn() {
+    const m = document.getElementById("hudMuteBtn");
+    if (m) m.textContent = soundOn ? "🔊" : "🔇";
+  }
+  document.getElementById("hudMuteBtn").onclick = () => {
+    soundOn = !soundOn; store.set("sound", soundOn); syncMuteBtn(); renderMenuState();
+  };
+  syncMuteBtn();
+
   document.getElementById("soundBtn").onclick = () => {
-    soundOn = !soundOn; store.set("sound", soundOn); renderMenuState();
+    soundOn = !soundOn; store.set("sound", soundOn); syncMuteBtn(); renderMenuState();
   };
   document.getElementById("themeBtn").onclick = () => {
     nightMode = !nightMode; store.set("night", nightMode);
@@ -1662,6 +1708,7 @@
     roomCode = (document.getElementById("roomCodeInput").value || "CHAI").trim().toUpperCase();
     wsBase = document.getElementById("wsUrlInput").value.trim();
     store.set("wsUrl", wsBase);
+    wsWanted = true;
     connectRoom();
     backdrop.style.display = "none";
     showToast(`⚔️ Joined Room ${roomCode}`);
@@ -1670,6 +1717,7 @@
     roomCode = (document.getElementById("roomCodeInput").value || "CHAI").toUpperCase();
     wsBase = document.getElementById("wsUrlInput").value.trim();
     store.set("wsUrl", wsBase);
+    wsWanted = true;
     connectRoom();
     const u = new URL(location.href);
     u.searchParams.set("room", roomCode);
