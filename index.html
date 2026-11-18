@@ -234,6 +234,31 @@
     .next-pop {
       animation: nextPopIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
     }
+    @keyframes goldRecordGlow {
+      0%, 100% { box-shadow: 0 0 8px rgba(250, 204, 21, 0.55); transform: scale(1); }
+      50% { box-shadow: 0 0 16px rgba(250, 204, 21, 0.95); transform: scale(1.06); }
+    }
+    #bestHudPill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(250, 204, 21, 0.14);
+      border: 1px solid rgba(250, 204, 21, 0.38);
+      color: #fde047;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    #bestHudPill.record {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.45), rgba(234, 179, 8, 0.45));
+      border-color: #fef08a;
+      color: #ffffff;
+      animation: goldRecordGlow 1.4s infinite ease-in-out;
+    }
   </style>
   <meta name="description" content="Drop and merge 14 Indian treats inside a tilting brass dabba! Instant mobile and desktop play, daily seeds, and live 2-player duels." />
   <meta property="og:type" content="website" />
@@ -261,7 +286,7 @@
       <div class="pill" id="chakkarPill">🔔 12</div>
       <div class="pill" id="nextPill">Next: <canvas id="nextMini" width="20" height="20"></canvas></div>
     </div>
-    <span id="chakkarHudPill" title="Drops until next Chakkar tilt">🔔 12</span><span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
+    <span id="bestHudPill" title="All-Time Personal Best">👑 0</span><span id="chakkarHudPill" title="Drops until next Chakkar tilt">🔔 12</span><span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
   </div>
   <div id="lvBarWrap"><div id="lvBar"></div></div>
 
@@ -708,7 +733,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; beatRecordThisRun = false; syncBestHudPill(false); const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -885,6 +910,21 @@
   }
 
   function step(dt) {
+    if (!gameOver && score > personalBest && score > 0) {
+      const hadPriorBest = personalBest > 0;
+      personalBest = score;
+      try { localStorage.setItem("chai_chakkar_best", String(personalBest)); } catch {}
+      if (!beatRecordThisRun) {
+        beatRecordThisRun = true;
+        if (hadPriorBest) {
+          showToast("👑 NEW PERSONAL BEST!");
+          tone(659.25, 0.1, "triangle", 0.14);
+          setTimeout(() => tone(880, 0.15, "sine", 0.16), 95);
+          buzz([25, 30, 45]);
+        }
+      }
+      syncBestHudPill(true);
+    }
     const chakkarPillEl = document.getElementById("chakkarHudPill");
     if (chakkarPillEl) {
       const remDrops = Math.max(1, Math.min(12, (typeof dropsUntilChakkar === "number" ? dropsUntilChakkar : 12)));
@@ -1099,6 +1139,26 @@
     return data.count;
   }
 
+    let personalBest = 0, beatRecordThisRun = false;
+
+  function loadPersonalBest() {
+    try {
+      const top = getTopScores();
+      const topVal = top.length ? Number(top[0].score) || 0 : 0;
+      const savedBest = Number(localStorage.getItem("chai_chakkar_best")) || 0;
+      personalBest = Math.max(topVal, savedBest);
+    } catch { personalBest = 0; }
+    syncBestHudPill(false);
+  }
+
+  function syncBestHudPill(isNewRecord) {
+    const el = document.getElementById("bestHudPill");
+    if (!el) return;
+    const label = `👑 ${personalBest.toLocaleString()}`;
+    if (el.textContent !== label) el.textContent = label;
+    el.classList.toggle("record", !!isNewRecord);
+  }
+
   function getTopScores() {
     try {
       const raw = localStorage.getItem("chai_chakkar_top5");
@@ -1137,14 +1197,15 @@
 
   document.getElementById("clearScoresBtn")?.addEventListener("click", () => {
     if (confirm("Clear your saved Top 5 high scores?")) {
-      try { localStorage.removeItem("chai_chakkar_top5"); } catch {}
+      try { localStorage.removeItem("chai_chakkar_top5"); localStorage.removeItem("chai_chakkar_best"); personalBest = 0; beatRecordThisRun = false; syncBestHudPill(false); } catch {}
       renderTopScores();
       showToast("🧹 High scores cleared");
     }
   });
 
   function saveScoreRecord() {
-    updateDailyStreak();
+    loadPersonalBest();
+  updateDailyStreak();
     recordTopScore(score, level, getHighestLabel());
     leaderboard.push({
       mode: isDaily ? "Daily" : "Endless",
@@ -1617,6 +1678,7 @@
 </script>
 </body>
 </html>
+
 
 
 
