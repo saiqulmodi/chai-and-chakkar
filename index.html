@@ -283,7 +283,7 @@
     <div class="pills">
       <div class="pill" id="lvPill">⭐ Lv 1</div>
       <div class="pill" id="scorePill">0</div>
-      <div class="pill" id="chakkarPill">🔔 12</div>
+      <div class="pill" id="chakkarPill">🔔 12</div><div class="pill" id="chaiPill" title="Drops until Cutting Chai Wildcard">☕ 12</div>
       <div class="pill" id="nextPill">Next: <canvas id="nextMini" width="20" height="20"></canvas></div>
     </div>
     <span id="bestHudPill" title="All-Time Personal Best">👑 0</span><span id="chakkarHudPill" title="Drops until next Chakkar tilt">🔔 12</span><span id="comboPill">🔥 x2</span><button class="pill-btn" id="hudMuteBtn" title="Toggle Sound & Haptics" aria-label="Toggle Sound">🔊</button><button id="menuBtn">☰ Menu</button>
@@ -340,8 +340,12 @@
             <button class="btn sec" id="themeBtn">☀️ Day</button>
           </div>
         </div>
-        <div class="row" style="margin-top:12px;">
-          <button class="btn" id="newGameBtn" style="width:100%;">↻ Start Fresh Run</button>
+        <div class="row" style="margin-top:10px;gap:8px;">
+          <button class="btn sec" id="menuShareScoreBtn" style="flex:1;">📋 Share Score</button>
+          <button class="btn sec" id="resumeRunBtn" style="flex:1;display:none;">▶️ Resume</button>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="newGameBtn" style="width:100%;">🔄 Fresh Start (Reset Score)</button>
         </div>
       </div>
 
@@ -733,7 +737,7 @@
   }
 
   function resetGame(startLv = 1) {
-    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; beatRecordThisRun = false; syncBestHudPill(false); const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none"; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
+    bodies = []; particles = []; popups = []; confetti = []; chainCount = 0; lastMergeAt = 0; shakeTime = 0; shakeMax = 0; shakeMag = 0; beatRecordThisRun = false; syncBestHudPill(false); dropCount = 0; maxComboRun = 1; const cp = document.getElementById("comboPill"); if (cp) cp.style.display = "none";
     level = Math.max(1, startLv);
     score = level > 1 ? levelThreshold(level - 1) : 0;
     dropsUntilChakkar = 12;
@@ -762,6 +766,13 @@
     document.getElementById("lvPill").textContent = `⭐ Lv ${level}`;
     document.getElementById("scorePill").textContent = score.toLocaleString();
     document.getElementById("chakkarPill").textContent = `🔔 ${dropsUntilChakkar}`;
+    const chaiRem = currentTier === -1 ? 0 : (12 - ((dropCount + (nextTier === -1 ? 1 : 0)) % 12));
+    const chaiEl = document.getElementById("chaiPill");
+    if (chaiEl) {
+      chaiEl.textContent = currentTier === -1 ? "☕ READY!" : `☕ ${chaiRem}`;
+      chaiEl.style.background = currentTier === -1 ? "#f59e0b" : "";
+      chaiEl.style.color = currentTier === -1 ? "#1c1008" : "";
+    }
 
     nextMini.clearRect(0, 0, 20, 20);
     nextMini.save();
@@ -1016,7 +1027,7 @@
                 bodies.push({ x: mx, y: my, vx: 0, vy: -35, tier: nt, r: tiers[nt].r, age: 0, merged: false });
                 unlockTier(nt);
                 spawnParticles(mx, my, tiers[nt].color, 14);
-                const nowMs = performance.now(); comboCount = (nowMs - lastMergeTime < 1400) ? comboCount + 1 : 1; lastMergeTime = nowMs; playTablaMerge(nt, comboCount);
+                comboCount = (nowMs - lastMergeTime < 1400) ? comboCount + 1 : 1; lastMergeTime = nowMs; playTablaMerge(nt, comboCount);
               }
               checkProgression();
               updateHUD();
@@ -1050,6 +1061,7 @@
       overflowTimer += dt;
       if (overflowTimer >= 3.0 && !gameOver) {
         gameOver = true;
+        clearSavedRun();
         saveScoreRecord();
         const ov = document.getElementById("gameOverOverlay");
         if (peerConnected) {
@@ -1578,6 +1590,16 @@
   }
 
   function renderMenuState() {
+    const saved = store.get("savedRun", null);
+    const resBtn = document.getElementById("resumeRunBtn");
+    if (resBtn) {
+      if (saved && (saved.score > 0 || (saved.bodies && saved.bodies.length > 0))) {
+        resBtn.style.display = "inline-flex";
+        resBtn.textContent = `▶️ Resume (${(saved.score || 0).toLocaleString()})`;
+      } else {
+        resBtn.style.display = "none";
+      }
+    }
     document.getElementById("modeEndlessBtn").className = isDaily ? "btn sec" : "btn";
     document.getElementById("modeDailyBtn").className = isDaily ? "btn" : "btn sec";
     document.getElementById("soundBtn").textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
@@ -1670,9 +1692,65 @@
     requestAnimationFrame(loop);
   }
 
+  function saveRunState() {
+    if (gameOver || isDaily) return;
+    if (score <= 0 && bodies.length === 0) return;
+    store.set("savedRun", {
+      score, level, dropCount, dropsUntilChakkar, maxComboRun,
+      currentTier, nextTier, activePackKey,
+      bodies: bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, tier: b.tier, r: b.r, age: b.age }))
+    });
+  }
+  function clearSavedRun() {
+    try { localStorage.removeItem("cc_savedRun"); } catch {}
+  }
+  function restoreSavedRun() {
+    const saved = store.get("savedRun", null);
+    if (!saved || !Array.isArray(saved.bodies)) return false;
+    if (saved.activePackKey && PACKS[saved.activePackKey]) {
+      activePackKey = saved.activePackKey;
+      store.set("packKey", activePackKey);
+    }
+    resetGame(1);
+    score = saved.score || 0;
+    level = saved.level || 1;
+    dropCount = saved.dropCount || 0;
+    dropsUntilChakkar = saved.dropsUntilChakkar || 12;
+    maxComboRun = saved.maxComboRun || 1;
+    currentTier = typeof saved.currentTier === "number" ? saved.currentTier : pickSpawnTier();
+    nextTier = typeof saved.nextTier === "number" ? saved.nextTier : pickSpawnTier();
+    bodies = saved.bodies.map(b => ({ ...b, merged: false }));
+    pulseNextPreview();
+    updateHUD();
+    showToast(`▶️ Resumed Run: ${score.toLocaleString()} pts`);
+    return true;
+  }
+
+  const menuShareBtn = document.getElementById("menuShareScoreBtn");
+  if (menuShareBtn) menuShareBtn.onclick = shareWordleScore;
+
+  const resumeBtn = document.getElementById("resumeRunBtn");
+  if (resumeBtn) {
+    resumeBtn.onclick = () => {
+      if (restoreSavedRun()) backdrop.style.display = "none";
+    };
+  }
+  const freshBtn = document.getElementById("newGameBtn");
+  if (freshBtn) {
+    freshBtn.onclick = () => {
+      clearSavedRun();
+      const startLv = parseInt(document.getElementById("startLvSelect")?.value || "1", 10) || 1;
+      resetGame(startLv);
+      backdrop.style.display = "none";
+      showToast("🔄 Fresh Run Started!");
+    };
+  }
+
   connectRoom();
   renderTopScores();
-  resetGame(1);
+  if (!restoreSavedRun()) {
+    resetGame(1);
+  }
   requestAnimationFrame(loop);
 })();
 </script>
