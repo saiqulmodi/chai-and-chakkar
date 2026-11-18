@@ -1726,7 +1726,8 @@
       ctx.restore();
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
+    ctx.restore(); // tilt
+    ctx.restore(); // shake: without this the shake offset piled up every frame and the board drifted
   }
 
   function drawTreat(x, y, r, tier) {
