@@ -1,0 +1,80 @@
+﻿{
+  "version": 1,
+  "tiers": [
+    { "tier": 1, "id": "elaichi", "name": "Elaichi" },
+    { "tier": 2, "id": "rasgulla", "name": "Rasgulla" },
+    { "tier": 3, "id": "kulfi", "name": "Kulfi" },
+    { "tier": 4, "id": "pani_puri", "name": "Pani Puri" },
+    { "tier": 5, "id": "samosa", "name": "Samosa" },
+    { "tier": 6, "id": "vada_pav", "name": "Vada Pav" },
+    { "tier": 7, "id": "jalebi", "name": "Jalebi" },
+    { "tier": 8, "id": "masala_chai", "name": "Masala Chai" }
+  ],
+  "goldenPlateRules": {
+    "scoreMultiplier": 3,
+    "radiusScale": 1.5,
+    "crumbClearCount": 2,
+    "crumbMaxTier": 2
+  },
+  "rescueOffer": {
+    "extraDrops": 5,
+    "currency": "stratos_coins"
+  },
+  "levels": [
+    {
+      "level": 1,
+      "title": "Morning Warm-Up",
+      "dropLimit": 20,
+      "dabbaWidthScale": 1.0,
+      "targets": [{ "tier": 4, "id": "pani_puri", "count": 2 }],
+      "starterSnacks": [],
+      "goldenPlate": { "mode": "static", "positions": [{ "xPct": 50, "yPct": 78 }] },
+      "twists": { "rollPreview": true, "chakkarTiltEvery": null, "cuttingChaiEvery": 12, "hungryCustomer": false, "masalaRainAtDrop": null },
+      "stars": { "one": { "maxDrops": 20 }, "two": { "maxDrops": 15 }, "three": { "maxDrops": 12, "minGoldenPlateMerges": 1 } }
+    },
+    {
+      "level": 2,
+      "title": "First Tilt",
+      "dropLimit": 26,
+      "dabbaWidthScale": 1.0,
+      "targets": [{ "tier": 5, "id": "samosa", "count": 1 }, { "tier": 3, "id": "kulfi", "count": 1 }],
+      "starterSnacks": [],
+      "goldenPlate": { "mode": "static", "positions": [{ "xPct": 28, "yPct": 65 }] },
+      "twists": { "rollPreview": true, "chakkarTiltEvery": 12, "cuttingChaiEvery": 12, "hungryCustomer": false, "masalaRainAtDrop": null },
+      "stars": { "one": { "maxDrops": 26 }, "two": { "maxDrops": 20 }, "three": { "maxDrops": 16, "minGoldenPlateMerges": 1 } }
+    },
+    {
+      "level": 3,
+      "title": "Rush Hour",
+      "dropLimit": 30,
+      "dabbaWidthScale": 1.0,
+      "targets": [{ "tier": 6, "id": "vada_pav", "count": 1 }],
+      "starterSnacks": [{ "tier": 2, "xPct": 35 }, { "tier": 2, "xPct": 65 }, { "tier": 3, "xPct": 50 }],
+      "goldenPlate": { "mode": "static", "positions": [{ "xPct": 74, "yPct": 58 }] },
+      "twists": { "rollPreview": true, "chakkarTiltEvery": 12, "cuttingChaiEvery": 12, "hungryCustomer": true, "masalaRainAtDrop": null },
+      "stars": { "one": { "maxDrops": 30 }, "two": { "maxDrops": 23 }, "three": { "maxDrops": 19, "requireTargetInGoldenPlate": true } }
+    },
+    {
+      "level": 4,
+      "title": "Masala Rain",
+      "dropLimit": 36,
+      "dabbaWidthScale": 1.0,
+      "targets": [{ "tier": 7, "id": "jalebi", "count": 1 }, { "tier": 4, "id": "pani_puri", "count": 1 }],
+      "starterSnacks": [{ "tier": 2, "xPct": 30 }, { "tier": 3, "xPct": 50 }, { "tier": 2, "xPct": 70 }],
+      "goldenPlate": { "mode": "static", "positions": [{ "xPct": 50, "yPct": 45 }] },
+      "twists": { "rollPreview": true, "chakkarTiltEvery": 12, "cuttingChaiEvery": 12, "hungryCustomer": false, "masalaRainAtDrop": 15 },
+      "stars": { "one": { "maxDrops": 36 }, "two": { "maxDrops": 28 }, "three": { "maxDrops": 23, "minGoldenPlateMerges": 1 } }
+    },
+    {
+      "level": 5,
+      "title": "Tiffin Boss",
+      "dropLimit": 40,
+      "dabbaWidthScale": 0.85,
+      "targets": [{ "tier": 8, "id": "masala_chai", "count": 1 }],
+      "starterSnacks": [{ "tier": 3, "xPct": 35 }, { "tier": 3, "xPct": 65 }, { "tier": 4, "xPct": 50 }],
+      "goldenPlate": { "mode": "alternate", "switchEveryDrops": 10, "positions": [{ "xPct": 30, "yPct": 60 }, { "xPct": 70, "yPct": 60 }] },
+      "twists": { "rollPreview": true, "chakkarTiltEvery": 12, "cuttingChaiEvery": 12, "hungryCustomer": true, "masalaRainAtDrop": null },
+      "stars": { "one": { "maxDrops": 40 }, "two": { "maxDrops": 32 }, "three": { "maxDrops": 26, "minGoldenPlateMerges": 1 } }
+    }
+  ]
+}
